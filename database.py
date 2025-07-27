@@ -293,8 +293,9 @@ def calculate_keyword_similarity(text1, text2):
         union = keywords1.union(keywords2)
         similarity = len(intersection) / len(union) if union else 0
     
-    # For regular keyword matches, return empty keywords (no enhanced logic)
-    return similarity, ""
+    # Return the matching keywords separated by semicolon and space
+    matching_keywords = keywords1.intersection(keywords2)
+    return similarity, "; ".join(matching_keywords)
 
 def update_matches(matches):
     """Update database with matched records"""

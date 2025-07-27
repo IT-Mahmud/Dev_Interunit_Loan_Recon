@@ -12,8 +12,9 @@ CREATE TABLE IF NOT EXISTS tally_data (
     Vch_No VARCHAR(255),
     Debit DECIMAL(15,2),
 	Credit DECIMAL(15,2),
+	keywords TEXT,
     entered_by VARCHAR(100),
-    
+
     lender VARCHAR(50),
     borrower VARCHAR(50),
     
@@ -24,7 +25,6 @@ CREATE TABLE IF NOT EXISTS tally_data (
     match_status ENUM('unmatched', 'matched', 'confirmed') DEFAULT 'unmatched',
     match_score DECIMAL(5,2),
     reconciliation_date DATETIME,
-    confirmed_by VARCHAR(100),
-    keywords TEXT
-);
+    confirmed_by VARCHAR(100)
+	);
 
