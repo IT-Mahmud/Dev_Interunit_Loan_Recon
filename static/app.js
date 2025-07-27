@@ -174,66 +174,25 @@ function displayData(data) {
         `;
         return;
     }
-    
+    // Get all unique columns from the data
+    const columns = Array.from(new Set(data.flatMap(row => Object.keys(row))));
     let tableHTML = `
         <div class="report-table-wrapper">
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>UID</th>
-                        <th>Lender</th>
-                        <th>Borrower</th>
-                        <th>Statement Month</th>
-                        <th>Statement Year</th>
-                        <th>Date</th>
-                        <th>Dr/Cr</th>
-                        <th>Particulars</th>
-                        <th>Vch Type</th>
-                        <th>Vch No</th>
-                        <th>Debit</th>
-                        <th>Credit</th>
-                        <th>Entered By</th>
-                        <th>Matched With</th>
-                        <th>Match Status</th>
-                        <th>Match Score</th>
-                        <th>Reconciliation Date</th>
-                        <th>Confirmed By</th>
+                        ${columns.map(col => `<th>${col}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
     `;
-    
     data.forEach(row => {
         tableHTML += `
             <tr>
-                <td>${row.tally_id || ''}</td>
-                <td>${row.tally_uid || ''}</td>
-                <td>${row.lender || ''}</td>
-                <td>${row.borrower || ''}</td>
-                <td>${row.statement_month || ''}</td>
-                <td>${row.statement_year || ''}</td>
-                <td>${formatDate(row.Date)}</td>
-                <td>${row.dr_cr || ''}</td>
-                <td title="${row.Particulars || ''}">${row.Particulars || ''}</td>
-                <td>${row.Vch_Type || ''}</td>
-                <td>${row.Vch_No || ''}</td>
-                <td style="text-align: right;">${formatAmount(row.Debit)}</td>
-                <td style="text-align: right;">${formatAmount(row.Credit)}</td>
-                <td>${row.entered_by || ''}</td>
-                <td>${row.matched_with || ''}</td>
-                <td>
-                    <span class="badge ${getStatusBadgeClass(row.match_status)}">
-                        ${row.match_status || 'unmatched'}
-                    </span>
-                </td>
-                <td>${row.match_score ? row.match_score.toFixed(2) : ''}</td>
-                <td>${row.reconciliation_date ? formatDate(row.reconciliation_date) : ''}</td>
-                <td>${row.confirmed_by || ''}</td>
+                ${columns.map(col => `<td>${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('')}
             </tr>
         `;
     });
-    
     tableHTML += `
                 </tbody>
             </table>
@@ -242,7 +201,6 @@ function displayData(data) {
             Total records: ${data.length}
         </div>
     `;
-    
     resultDiv.innerHTML = tableHTML;
 }
 
