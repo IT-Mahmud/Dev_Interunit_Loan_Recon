@@ -182,11 +182,11 @@ function displayData(data, columnOrder) {
     console.log("Frontend received columns:", columns);
     
     let tableHTML = `
-        <div class="report-table-wrapper">
-            <table class="report-table">
-                <thead>
+        <div class="report-table-wrapper" style="max-height: 70vh; overflow-y: auto;">
+            <table class="report-table" style="border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background-color: #f8f9fa; z-index: 1;">
                     <tr>
-                        ${columns.map(col => `<th>${col}</th>`).join('')}
+                        ${columns.map(col => `<th style="border: 1px solid #dee2e6; padding: 8px; text-align: left; background-color: #f8f9fa;">${col}</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -195,7 +195,7 @@ function displayData(data, columnOrder) {
     data.forEach(row => {
         tableHTML += `
             <tr>
-                ${columns.map(col => `<td>${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('')}
+                ${columns.map(col => `<td style="border: 1px solid #dee2e6; padding: 8px;">${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('')}
             </tr>
         `;
     });
