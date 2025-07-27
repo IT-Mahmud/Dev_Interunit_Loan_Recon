@@ -33,7 +33,14 @@ def get_data(filters=None):
     try:
         ensure_table_exists('tally_data')
         
-        sql = "SELECT * FROM tally_data"
+        # Get column order from database
+        with engine.connect() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM tally_data"))
+            columns = [row[0] for row in result]
+        
+        # Build SQL with explicit column order
+        column_list = ", ".join(columns)
+        sql = f"SELECT {column_list} FROM tally_data"
         params = []
         
         if filters:
@@ -550,3 +557,15 @@ def reset_match_status():
     except Exception as e:
         print(f"Error resetting match status: {e}")
         return False 
+
+def get_column_order():
+    """Get the exact column order from the database"""
+    try:
+        ensure_table_exists('tally_data')
+        with engine.connect() as conn:
+            result = conn.execute(text("SHOW COLUMNS FROM tally_data"))
+            columns = [row[0] for row in result]
+        return columns
+    except Exception as e:
+        print(f"Error getting column order: {e}")
+        return [] 

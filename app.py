@@ -61,7 +61,12 @@ def get_data():
     """Get all data"""
     try:
         data = database.get_data()
-        return jsonify({'data': data})
+        # Get column order from database
+        column_order = database.get_column_order()
+        return jsonify({
+            'data': data,
+            'column_order': column_order
+        })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

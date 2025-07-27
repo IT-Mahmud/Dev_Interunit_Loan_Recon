@@ -153,7 +153,7 @@ async function loadData() {
         const result = await response.json();
         
         if (response.ok) {
-            displayData(result.data);
+            displayData(result.data, result.column_order);
         } else {
             console.error('Error loading data:', result.error);
         }
@@ -163,7 +163,7 @@ async function loadData() {
 }
 
 // Display data in table
-function displayData(data) {
+function displayData(data, columnOrder) {
     const resultDiv = document.getElementById('data-table-result');
     
     if (!data || data.length === 0) {
@@ -174,8 +174,13 @@ function displayData(data) {
         `;
         return;
     }
-    // Get all unique columns from the data
-    const columns = Array.from(new Set(data.flatMap(row => Object.keys(row))));
+    
+    // Use the column order from backend, fallback to Object.keys if not provided
+    const columns = columnOrder || Object.keys(data[0]);
+    
+    // Debug: Print the column order received by frontend
+    console.log("Frontend received columns:", columns);
+    
     let tableHTML = `
         <div class="report-table-wrapper">
             <table class="report-table">
@@ -186,6 +191,7 @@ function displayData(data) {
                 </thead>
                 <tbody>
     `;
+    
     data.forEach(row => {
         tableHTML += `
             <tr>
@@ -193,6 +199,7 @@ function displayData(data) {
             </tr>
         `;
     });
+    
     tableHTML += `
                 </tbody>
             </table>
@@ -201,6 +208,7 @@ function displayData(data) {
             Total records: ${data.length}
         </div>
     `;
+    
     resultDiv.innerHTML = tableHTML;
 }
 
