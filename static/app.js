@@ -291,17 +291,19 @@ function displayMatches(matches) {
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th colspan="4" style="text-align: center; background-color: #e3f2fd;">Steel (Lender)</th>
-                        <th colspan="4" style="text-align: center; background-color: #f3e5f5;">GeoTex (Borrower)</th>
+                        <th colspan="5" style="text-align: center; background-color: #e3f2fd;">Steel (Lender)</th>
+                        <th colspan="5" style="text-align: center; background-color: #f3e5f5;">GeoTex (Borrower)</th>
                         <th>Match Score</th>
                         <th>Keywords</th>
                         <th>Actions</th>
                     </tr>
                     <tr>
+                        <th>UID</th>
                         <th>Date</th>
                         <th>Particulars</th>
                         <th>Credit</th>
                         <th>Debit</th>
+                        <th>UID</th>
                         <th>Date</th>
                         <th>Particulars</th>
                         <th>Credit</th>
@@ -317,6 +319,7 @@ function displayMatches(matches) {
     matches.forEach(match => {
         // Determine which record is Steel and which is GeoTex based on lender field
         let steelRecord, geotexRecord;
+        let steelUid, geotexUid;
         
         if (match.lender === 'Steel') {
             // This record is Steel, get GeoTex from matched data
@@ -326,12 +329,14 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
+            steelUid = match.tally_uid;
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
+            geotexUid = match.matched_tally_uid;
         } else if (match.matched_lender === 'Steel') {
             // This record is GeoTex, get Steel from matched data
             geotexRecord = {
@@ -340,12 +345,14 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
+            geotexUid = match.tally_uid;
             steelRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
+            steelUid = match.matched_tally_uid;
         } else {
             // Fallback: assume current record is Steel if we can't determine
             steelRecord = {
@@ -354,20 +361,24 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
+            steelUid = match.tally_uid;
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
+            geotexUid = match.matched_tally_uid;
         }
         
         tableHTML += `
             <tr>
+                <td style="font-size: 11px; color: #666;">${steelUid || ''}</td>
                 <td>${formatDate(steelRecord.Date)}</td>
                 <td>${steelRecord.Particulars || ''}</td>
                 <td style="text-align: right; color: green;">${formatAmount(steelRecord.Credit || 0)}</td>
                 <td style="text-align: right; color: red;">${formatAmount(steelRecord.Debit || 0)}</td>
+                <td style="font-size: 11px; color: #666;">${geotexUid || ''}</td>
                 <td>${formatDate(geotexRecord.Date)}</td>
                 <td>${geotexRecord.Particulars || ''}</td>
                 <td style="text-align: right; color: green;">${formatAmount(geotexRecord.Credit || 0)}</td>

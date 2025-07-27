@@ -59,7 +59,7 @@ def get_data(filters=None):
         
         # Convert to records and handle NaN values
         records = df.to_dict('records')
-
+        
         # Replace any remaining NaN values with None for JSON serialization
         for record in records:
             for key, value in record.items():
