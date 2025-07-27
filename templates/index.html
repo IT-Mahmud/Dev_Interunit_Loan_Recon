@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interunit Loan Reconciliation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- SheetJS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="topbar"><span class="topbar-title">Interunit Loan Reconciliation</span></div>
+<div class="d-flex">
+    <nav class="custom-sidebar">
+        <!-- Upload Ledger -->
+        <div class="menu-group">
+            <a class="menu-item d-flex align-items-center justify-content-between fw-bold" data-bs-toggle="collapse" href="#uploadMenu" role="button" aria-expanded="true" aria-controls="uploadMenu">
+                <span class="d-flex align-items-center"><i class="bi bi-upload me-2"></i> Upload Ledger</span>
+                <i class="bi bi-chevron-down ms-2"></i>
+            </a>
+            <div class="collapse show" id="uploadMenu">
+                <div class="submenu-list">
+                    <a class="submenu-item" href="#" onclick="showTab('tally-upload')">Tally Ledger</a>
+                </div>
+            </div>
+        </div>
+        <!-- Run Match -->
+        <div class="menu-group">
+            <a class="menu-item d-flex align-items-center justify-content-between fw-bold" data-bs-toggle="collapse" href="#runMatchMenu" role="button" aria-expanded="false" aria-controls="runMatchMenu">
+                <span class="d-flex align-items-center"><i class="bi bi-arrow-repeat me-2"></i> Run Match</span>
+                <i class="bi bi-chevron-down ms-2"></i>
+            </a>
+            <div class="collapse" id="runMatchMenu">
+                <div class="submenu-list">
+                    <a class="submenu-item" href="#" onclick="showTab('reconciliation')">Reconciliation</a>
+                </div>
+            </div>
+        </div>
+        <!-- View Data -->
+        <div class="menu-group">
+            <a class="menu-item d-flex align-items-center justify-content-between fw-bold" data-bs-toggle="collapse" href="#viewMenu" role="button" aria-expanded="false" aria-controls="viewMenu">
+                <span class="d-flex align-items-center"><i class="bi bi-table me-2"></i> View Data</span>
+                <i class="bi bi-chevron-down ms-2"></i>
+            </a>
+            <div class="collapse" id="viewMenu">
+                <div class="submenu-list">
+                    <a class="submenu-item" href="#" onclick="showTab('data-table')">Transaction Data</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="flex-grow-1 tab-content-vertical p-4">
+        <!-- Tally Upload Tab -->
+        <div class="tab-pane" id="pane-tally-upload" style="display:block;">
+            <div class="parser-container">
+                <h2>Tally Ledger Parser</h2>
+                <form id="tally-upload-form" class="parser-form" enctype="multipart/form-data" autocomplete="off">
+                    <div class="parser-row">
+                        <button type="button" class="parser-label parser-file-btn" onclick="this.nextElementSibling.click()">Select File</button>
+                        <input type="file" name="file" class="parser-input file-input" style="display:none;" accept=".xlsx,.xls" required onchange="handleFileSelect(this)">
+                        <span class="file-chosen" style="margin-left:10px; font-size:14px; color:#222;">No file chosen</span>
+                    </div>
+                    <div class="parser-row" id="sheet-row" style="display:none;">
+                        <label class="parser-label">Select Sheet</label>
+                        <select name="sheet_name" class="parser-input sheet-select" required>
+                        </select>
+                    </div>
+                    <div class="parser-row parser-row-parse">
+                        <button type="submit" class="parser-parse-btn" id="parse-btn" disabled>Parse</button>
+                    </div>
+                </form>
+                <div id="upload-msg" style="color: red; margin-top:10px"></div>
+                <div id="upload-result" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
+        <!-- Data Table Tab -->
+        <div class="tab-pane" id="pane-data-table" style="display:none;">
+            <div class="parser-container parser-container-fullwidth">
+                <h2>Transaction Data</h2>
+                <div id="data-table-result" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <!-- Reconciliation Tab -->
+        <div class="tab-pane" id="pane-reconciliation" style="display:none;">
+            <div class="parser-container parser-container-fullwidth">
+                <h2>Interunit Reconciliation</h2>
+                <div class="mb-3">
+                    <button type="button" class="btn btn-primary" onclick="runReconciliation()">
+                        <i class="bi bi-arrow-repeat me-2"></i>Run Reconciliation
+                    </button>
+                    <button type="button" class="btn btn-secondary ms-2" onclick="loadMatches()">
+                        <i class="bi bi-eye me-2"></i>View Matches
+                    </button>
+                </div>
+                <div id="reconciliation-result" style="margin-top:20px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html> 
