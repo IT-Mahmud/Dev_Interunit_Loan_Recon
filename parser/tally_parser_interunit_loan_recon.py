@@ -194,15 +194,15 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
                 hexbal = to_hex(round(float(str(balance_val).replace(",", ""))))
             except Exception:
                 hexbal = ""
-            # Add lender prefix to make tally_uid unique across files
+            # Add lender prefix to make uid unique across files
             uid = f"{lender}_{hexdate}_{hexbal}_{rownum:06d}"
             uids.append(uid)
             rownum += 1
         else:
             uids.append("")
-    df["tally_uid"] = uids
-    cols = ["tally_uid", "lender", "borrower", "statement_month", "statement_year"] + \
-        [c for c in df.columns if c not in ["tally_uid", "lender", "borrower", "statement_month", "statement_year"]]
+    df["uid"] = uids
+    cols = ["uid", "lender", "borrower", "statement_month", "statement_year"] + \
+        [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year"]]
 
     df["lender"] = lender
     df["borrower"] = borrower

@@ -329,14 +329,14 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
-            steelUid = match.tally_uid;
+            steelUid = match.uid;
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
-            geotexUid = match.matched_tally_uid;
+            geotexUid = match.matched_uid;
         } else if (match.matched_lender === 'Steel') {
             // This record is GeoTex, get Steel from matched data
             geotexRecord = {
@@ -345,14 +345,14 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
-            geotexUid = match.tally_uid;
+            geotexUid = match.uid;
             steelRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
-            steelUid = match.matched_tally_uid;
+            steelUid = match.matched_uid;
         } else {
             // Fallback: assume current record is Steel if we can't determine
             steelRecord = {
@@ -361,14 +361,14 @@ function displayMatches(matches) {
                 Credit: match.Credit,
                 Debit: match.Debit
             };
-            steelUid = match.tally_uid;
+            steelUid = match.uid;
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
-            geotexUid = match.matched_tally_uid;
+            geotexUid = match.matched_uid;
         }
         
         tableHTML += `
@@ -392,10 +392,10 @@ function displayMatches(matches) {
                     ${match.keywords || match.matched_keywords || ''}
                 </td>
                 <td style="text-align: center;">
-                    <button class="btn btn-success btn-sm me-1" onclick="acceptMatch('${match.tally_uid}')" title="Accept Match">
+                    <button class="btn btn-success btn-sm me-1" onclick="acceptMatch('${match.uid}')" title="Accept Match">
                         <i class="bi bi-check-lg"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="rejectMatch('${match.tally_uid}')" title="Reject Match">
+                    <button class="btn btn-danger btn-sm" onclick="rejectMatch('${match.uid}')" title="Reject Match">
                         <i class="bi bi-x-lg"></i>
                     </button>
                 </td>
@@ -413,7 +413,7 @@ function displayMatches(matches) {
 }
 
 // Accept/Reject functions
-async function acceptMatch(tallyUid) {
+async function acceptMatch(uid) {
     try {
         const response = await fetch('/api/accept-match', {
             method: 'POST',
@@ -421,7 +421,7 @@ async function acceptMatch(tallyUid) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tally_uid: tallyUid,
+                uid: uid,
                 confirmed_by: 'User'
             })
         });
@@ -440,7 +440,7 @@ async function acceptMatch(tallyUid) {
     }
 }
 
-async function rejectMatch(tallyUid) {
+async function rejectMatch(uid) {
     if (!confirm('Are you sure you want to reject this match?')) {
         return;
     }
@@ -452,7 +452,7 @@ async function rejectMatch(tallyUid) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tally_uid: tallyUid,
+                uid: uid,
                 confirmed_by: 'User'
             })
         });

@@ -1156,7 +1156,7 @@ if (document.getElementById('unmatched-bank-form')) {
 
 // --- Column order for unmatched tally report (custom subset) ---
 const unmatchedTallyColumnOrder = [
-    'S/N', 'tally_uid', 'bank_code', 'acct_no', 'statement_month', 'statement_year', 'unit_name',
+    'S/N', 'uid', 'bank_code', 'acct_no', 'statement_month', 'statement_year', 'unit_name',
     'T_Date', 'dr_cr', 'T_Particulars', 'T_Vch_Type', 'T_Vch_No', 'T_Debit', 'T_Credit', 'tally_ven'
 ];
 
@@ -1768,7 +1768,7 @@ const bftMatchedColumnOrder = [
     'S/N', 'bft_match_id', 'bft_source', 'bft_match_type', 'bank_uid', 'bank_code', 'acct_no',
     'B_Date', 'B_Particulars', 'B_Ref_Cheque', 'B_Withdrawal', 'B_Deposit', 'bank_ven',
     'fin_uid', 'F_Credit_Amount', 'F_Receiver_Name', 'F_Voucher_No', 'fin_ven',
-    'tally_uid', 'T_Date', 'dr_cr', 'T_Particulars', 'T_Vch_No', 'T_Debit', 'T_Credit',
+    'uid', 'T_Date', 'dr_cr', 'T_Particulars', 'T_Vch_No', 'T_Debit', 'T_Credit',
     'tally_ven', 'statement_month', 'statement_year'
 ];
 const bftMatchedForm = document.getElementById('bank-fin-tally-matched-form');
@@ -1979,7 +1979,7 @@ if (document.getElementById('bank-tally-matched-form')) {
 const btMatchedColumnOrder = [
     'S/N', 'bt_match_id', 'bt_source', 'bank_uid', 'acct_no', 'bank_code', 'B_Date',
     'B_Particulars', 'B_Ref_Cheque', 'B_Withdrawal', 'B_Deposit', 'bank_ven',
-    'tally_uid', 'T_Date', 'dr_cr', 'T_Particulars', 'T_Vch_No', 'T_Debit', 'T_Credit',
+    'uid', 'T_Date', 'dr_cr', 'T_Particulars', 'T_Vch_No', 'T_Debit', 'T_Credit',
     'tally_ven', 'statement_month', 'statement_year'
 ];
 const btMatchedForm = document.getElementById('bank-tally-matched-form');

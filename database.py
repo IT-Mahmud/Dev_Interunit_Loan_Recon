@@ -178,8 +178,8 @@ def find_matches(data):
                 if similarity == 1.0:
                     # PO reference exact match - confirmed match
                     matches.append({
-                        'debit_id': geotex_record.get('tally_uid'),
-                        'credit_id': steel_record.get('tally_uid'),
+                        'debit_id': geotex_record.get('uid'),
+                        'credit_id': steel_record.get('uid'),
                         'similarity': similarity,
                         'amount': str(steel_amount),
                         'match_type': 'po_reference',
@@ -187,8 +187,8 @@ def find_matches(data):
                     })
                 elif similarity > 0.1:  # Regular keyword match
                     matches.append({
-                        'debit_id': geotex_record.get('tally_uid'),
-                        'credit_id': steel_record.get('tally_uid'),
+                        'debit_id': geotex_record.get('uid'),
+                        'credit_id': steel_record.get('uid'),
                         'similarity': similarity,
                         'amount': str(steel_amount),
                         'match_type': 'keyword',
@@ -313,7 +313,7 @@ def update_matches(matches):
                     match_score = :match_score, 
                     reconciliation_date = NOW(),
                     keywords = :keywords
-                WHERE tally_uid = :credit_id
+                WHERE uid = :credit_id
             """), {
                 'matched_with': match['debit_id'],  # Steel points to GeoTex
                 'match_score': match['similarity'],
@@ -329,7 +329,7 @@ def update_matches(matches):
                     match_score = :match_score, 
                     reconciliation_date = NOW(),
                     keywords = :keywords
-                WHERE tally_uid = :debit_id
+                WHERE uid = :debit_id
             """), {
                 'matched_with': match['credit_id'],  # GeoTex points to Steel
                 'match_score': match['similarity'],
@@ -356,9 +356,9 @@ def get_matched_data():
                 t2.Debit as matched_Debit, 
                 t2.Credit as matched_Credit,
                 t2.keywords as matched_keywords,
-                t2.tally_uid as matched_tally_uid
+                t2.uid as matched_uid
             FROM tally_data t1
-            LEFT JOIN tally_data t2 ON t1.matched_with = t2.tally_uid
+            LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
             WHERE (t1.match_status = 'matched' OR t1.match_status = 'confirmed')
             AND t1.matched_with IS NOT NULL
             ORDER BY t1.reconciliation_date DESC
@@ -375,16 +375,16 @@ def get_matched_data():
         
         return records
 
-def update_match_status(tally_uid, status, confirmed_by=None):
+def update_match_status(uid, status, confirmed_by=None):
     """Update match status (accepted/rejected)"""
     try:
         with engine.connect() as conn:
             if status == 'rejected':
                 # First, get the matched_with value
                 sql_get_matched = """
-                SELECT matched_with FROM tally_data WHERE tally_uid = :tally_uid
+                SELECT matched_with FROM tally_data WHERE uid = :uid
                 """
-                result = conn.execute(text(sql_get_matched), {'tally_uid': tally_uid})
+                result = conn.execute(text(sql_get_matched), {'uid': uid})
                 matched_record = result.fetchone()
                 
                 if matched_record and matched_record[0]:
@@ -397,9 +397,9 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                         matched_with = NULL,
                         match_score = NULL,
                         reconciliation_date = NULL
-                    WHERE tally_uid = :tally_uid
+                    WHERE uid = :uid
                     """
-                    conn.execute(text(sql_reset_main), {'tally_uid': tally_uid})
+                    conn.execute(text(sql_reset_main), {'uid': uid})
                     
                     # Reset the matched record
                     sql_reset_matched = """
@@ -408,7 +408,7 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                         matched_with = NULL,
                         match_score = NULL,
                         reconciliation_date = NULL
-                    WHERE tally_uid = :matched_with_uid
+                    WHERE uid = :matched_with_uid
                     """
                     conn.execute(text(sql_reset_matched), {'matched_with_uid': matched_with_uid})
                     
@@ -420,16 +420,16 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                         matched_with = NULL,
                         match_score = NULL,
                         reconciliation_date = NULL
-                    WHERE tally_uid = :tally_uid
+                    WHERE uid = :uid
                     """
-                    conn.execute(text(sql_reset_main), {'tally_uid': tally_uid})
+                    conn.execute(text(sql_reset_main), {'uid': uid})
                 
             else:
                 # For confirmed status, first get the matched_with value
                 sql_get_matched = """
-                SELECT matched_with FROM tally_data WHERE tally_uid = :tally_uid
+                SELECT matched_with FROM tally_data WHERE uid = :uid
                 """
-                result = conn.execute(text(sql_get_matched), {'tally_uid': tally_uid})
+                result = conn.execute(text(sql_get_matched), {'uid': uid})
                 matched_record = result.fetchone()
                 
                 if matched_record and matched_record[0]:
@@ -441,12 +441,12 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                     SET match_status = :status, 
                         reconciliation_date = NOW(),
                         confirmed_by = :confirmed_by
-                    WHERE tally_uid = :tally_uid
+                    WHERE uid = :uid
                     """
                     conn.execute(text(sql_update_main), {
                         'status': status,
                         'confirmed_by': confirmed_by,
-                        'tally_uid': tally_uid
+                        'uid': uid
                     })
                     
                     # Update the matched record
@@ -455,7 +455,7 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                     SET match_status = :status, 
                         reconciliation_date = NOW(),
                         confirmed_by = :confirmed_by
-                    WHERE tally_uid = :matched_with_uid
+                    WHERE uid = :matched_with_uid
                     """
                     conn.execute(text(sql_update_matched), {
                         'status': status,
@@ -469,12 +469,12 @@ def update_match_status(tally_uid, status, confirmed_by=None):
                     SET match_status = :status, 
                         reconciliation_date = NOW(),
                         confirmed_by = :confirmed_by
-                    WHERE tally_uid = :tally_uid
+                    WHERE uid = :uid
                     """
                     conn.execute(text(sql_update_main), {
                         'status': status,
                         'confirmed_by': confirmed_by,
-                        'tally_uid': tally_uid
+                        'uid': uid
                     })
             
             conn.commit()
@@ -494,7 +494,7 @@ def get_pending_matches():
                t2.Particulars as matched_particulars, t2.Date as matched_date,
                t2.Debit as matched_Debit, t2.Credit as matched_Credit
         FROM tally_data t1
-        LEFT JOIN tally_data t2 ON t1.matched_with = t2.tally_uid
+        LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
         WHERE t1.match_status = 'matched' AND t1.confirmed_by IS NULL
         ORDER BY t1.reconciliation_date DESC
         """
@@ -525,7 +525,7 @@ def get_confirmed_matches():
                t2.Particulars as matched_particulars, t2.Date as matched_date,
                t2.Debit as matched_Debit, t2.Credit as matched_Credit
         FROM tally_data t1
-        LEFT JOIN tally_data t2 ON t1.matched_with = t2.tally_uid
+        LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
         WHERE t1.match_status = 'confirmed' AND t1.confirmed_by IS NOT NULL
         ORDER BY t1.reconciliation_date DESC
         """

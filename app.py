@@ -167,13 +167,13 @@ def accept_match():
     """Accept a match"""
     try:
         data = request.get_json()
-        tally_uid = data.get('tally_uid')
+        uid = data.get('uid')
         confirmed_by = data.get('confirmed_by', 'User')
         
-        if not tally_uid:
-            return jsonify({'error': 'tally_uid is required'}), 400
+        if not uid:
+            return jsonify({'error': 'uid is required'}), 400
         
-        success = database.update_match_status(tally_uid, 'confirmed', confirmed_by)
+        success = database.update_match_status(uid, 'confirmed', confirmed_by)
         
         if success:
             return jsonify({'message': 'Match accepted successfully'})
@@ -188,13 +188,13 @@ def reject_match():
     """Reject a match"""
     try:
         data = request.get_json()
-        tally_uid = data.get('tally_uid')
+        uid = data.get('uid')
         confirmed_by = data.get('confirmed_by', 'User')
         
-        if not tally_uid:
-            return jsonify({'error': 'tally_uid is required'}), 400
+        if not uid:
+            return jsonify({'error': 'uid is required'}), 400
         
-        success = database.update_match_status(tally_uid, 'rejected', confirmed_by)
+        success = database.update_match_status(uid, 'rejected', confirmed_by)
         
         if success:
             return jsonify({'message': 'Match rejected successfully'})
