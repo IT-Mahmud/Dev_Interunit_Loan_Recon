@@ -294,7 +294,7 @@ function displayMatches(matches) {
                         <th colspan="4" style="text-align: center; background-color: #e3f2fd;">Steel (Lender)</th>
                         <th colspan="4" style="text-align: center; background-color: #f3e5f5;">GeoTex (Borrower)</th>
                         <th>Match Score</th>
-                        <th>keywords</th>
+                        <th>Keywords</th>
                         <th>Actions</th>
                     </tr>
                     <tr>
@@ -315,20 +315,46 @@ function displayMatches(matches) {
     `;
     
     matches.forEach(match => {
-        // Determine which record is Steel and which is GeoTex
+        // Determine which record is Steel and which is GeoTex based on lender field
         let steelRecord, geotexRecord;
         
         if (match.lender === 'Steel') {
-            steelRecord = match;
+            // This record is Steel, get GeoTex from matched data
+            steelRecord = {
+                Date: match.Date,
+                Particulars: match.Particulars,
+                Credit: match.Credit,
+                Debit: match.Debit
+            };
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit
             };
-        } else {
-            geotexRecord = match;
+        } else if (match.matched_lender === 'Steel') {
+            // This record is GeoTex, get Steel from matched data
+            geotexRecord = {
+                Date: match.Date,
+                Particulars: match.Particulars,
+                Credit: match.Credit,
+                Debit: match.Debit
+            };
             steelRecord = {
+                Date: match.matched_date,
+                Particulars: match.matched_particulars,
+                Credit: match.matched_Credit,
+                Debit: match.matched_Debit
+            };
+        } else {
+            // Fallback: assume current record is Steel if we can't determine
+            steelRecord = {
+                Date: match.Date,
+                Particulars: match.Particulars,
+                Credit: match.Credit,
+                Debit: match.Debit
+            };
+            geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,

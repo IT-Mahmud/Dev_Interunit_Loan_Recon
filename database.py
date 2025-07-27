@@ -304,7 +304,7 @@ def update_matches(matches):
     
     with engine.connect() as conn:
         for match in matches:
-            # Update the credit record (Steel)
+            # Update the credit record (Steel) - point to GeoTex
             conn.execute(text("""
                 UPDATE tally_data 
                 SET matched_with = :matched_with, 
@@ -314,13 +314,13 @@ def update_matches(matches):
                     keywords = :keywords
                 WHERE tally_uid = :credit_id
             """), {
-                'matched_with': match['credit_id'],
+                'matched_with': match['debit_id'],  # Steel points to GeoTex
                 'match_score': match['similarity'],
                 'keywords': match.get('matching_keywords', ''),
                 'credit_id': match['credit_id']
             })
             
-            # Update the debit record (GeoTex)
+            # Update the debit record (GeoTex) - point to Steel
             conn.execute(text("""
                 UPDATE tally_data 
                 SET matched_with = :matched_with, 
@@ -330,7 +330,7 @@ def update_matches(matches):
                     keywords = :keywords
                 WHERE tally_uid = :debit_id
             """), {
-                'matched_with': match['debit_id'],
+                'matched_with': match['credit_id'],  # GeoTex points to Steel
                 'match_score': match['similarity'],
                 'keywords': match.get('matching_keywords', ''),
                 'debit_id': match['debit_id']
@@ -346,13 +346,20 @@ def get_matched_data():
     
     with engine.connect() as conn:
         result = conn.execute(text("""
-            SELECT t1.*, t2.lender as matched_lender, t2.borrower as matched_borrower,
-                   t2.Particulars as matched_particulars, t2.Date as matched_date,
-                   t2.Debit as matched_Debit, t2.Credit as matched_Credit,
-                   t2.keywords as matched_keywords
+            SELECT 
+                t1.*,
+                t2.lender as matched_lender, 
+                t2.borrower as matched_borrower,
+                t2.Particulars as matched_particulars, 
+                t2.Date as matched_date,
+                t2.Debit as matched_Debit, 
+                t2.Credit as matched_Credit,
+                t2.keywords as matched_keywords,
+                t2.tally_uid as matched_tally_uid
             FROM tally_data t1
             LEFT JOIN tally_data t2 ON t1.matched_with = t2.tally_uid
-            WHERE t1.match_status = 'matched' OR t1.match_status = 'confirmed'
+            WHERE (t1.match_status = 'matched' OR t1.match_status = 'confirmed')
+            AND t1.matched_with IS NOT NULL
             ORDER BY t1.reconciliation_date DESC
         """))
         
