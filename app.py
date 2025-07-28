@@ -277,7 +277,41 @@ def download_matches():
         export_df = pd.DataFrame(export_rows)
         export_filename = f"matched_transactions_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         export_path = os.path.join('uploads', export_filename)
-        export_df.to_excel(export_path, index=False)
+        
+        # Export with openpyxl for formatting
+        with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
+            export_df.to_excel(writer, index=False, sheet_name='Matched Transactions')
+            
+            # Get the worksheet for formatting
+            worksheet = writer.sheets['Matched Transactions']
+            
+            # Format Particulars columns (columns C and H - 3rd and 8th columns)
+            from openpyxl.styles import Alignment
+            
+            # Steel Particulars column (C)
+            worksheet.column_dimensions['C'].width = 100
+            for cell in worksheet['C']:
+                cell.alignment = Alignment(wrap_text=True)
+            
+            # GeoTex Particulars column (H)
+            worksheet.column_dimensions['H'].width = 100
+            for cell in worksheet['H']:
+                cell.alignment = Alignment(wrap_text=True)
+            
+            # Autofit all other columns
+            for column in worksheet.columns:
+                column_letter = column[0].column_letter
+                if column_letter not in ['C', 'H']:  # Skip Particulars columns
+                    max_length = 0
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = min(max_length + 2, 50)  # Add padding, max 50
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
+        
         return send_from_directory('uploads', export_filename, as_attachment=True)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
