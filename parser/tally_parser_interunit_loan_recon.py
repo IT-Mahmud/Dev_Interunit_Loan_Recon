@@ -5,6 +5,7 @@ import pandas as pd
 from openpyxl import load_workbook
 from calendar import month_name
 from typing import Tuple, Optional
+import datetime
 
 def extract_statement_period(metadata: pd.DataFrame) -> Tuple[Tuple[str, str], str, Optional[int]]:
     period_pattern = re.compile(r'(\d{1,2}-[A-Za-z]{3}-\d{4})\s*to\s*(\d{1,2}-[A-Za-z]{3}-\d{4})')
@@ -224,6 +225,9 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
         "Credit": "Credit",
     }
     df = df.rename(columns=new_column_names)
+    # Add input_date column with current datetime for all rows
+    input_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    df['input_date'] = input_date
     return df
 
 if __name__ == "__main__":

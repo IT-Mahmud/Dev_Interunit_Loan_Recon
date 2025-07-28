@@ -25,6 +25,6 @@ CREATE TABLE IF NOT EXISTS tally_data (
     match_status ENUM('unmatched', 'matched', 'confirmed') DEFAULT 'unmatched',
     match_score DECIMAL(5,2),
     reconciliation_date DATETIME,
-    confirmed_by VARCHAR(100)
+    confirmed_by VARCHAR(100),
+    input_date DATETIME
 	);
-
