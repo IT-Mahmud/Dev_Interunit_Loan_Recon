@@ -273,6 +273,40 @@ async function loadMatches() {
     }
 }
 
+async function downloadMatches() {
+    try {
+        const response = await fetch('/api/download-matches');
+        
+        if (response.ok) {
+            // Get the filename from the response headers
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'matched_transactions.xlsx';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            // Create blob and download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } else {
+            const result = await response.json();
+            alert(`Failed to download: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Failed to download: ${error.message}`);
+    }
+}
+
 function displayMatches(matches) {
     const resultDiv = document.getElementById('reconciliation-result');
     

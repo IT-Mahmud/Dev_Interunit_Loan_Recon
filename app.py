@@ -204,5 +204,83 @@ def reject_match():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/download-matches', methods=['GET'])
+def download_matches():
+    """Download matched transactions as Excel (matching table structure)"""
+    try:
+        matches = database.get_matched_data()
+        if not matches:
+            return jsonify({'error': 'No matched data found'}), 404
+        df = pd.DataFrame(matches)
+        # Build rows matching the table structure exactly
+        export_rows = []
+        for _, row in df.iterrows():
+            # Determine which record is Steel and which is GeoTex (same logic as frontend)
+            if row.get('lender') == 'Steel':
+                # This record is Steel, get GeoTex from matched data
+                steel_uid = row.get('uid')
+                steel_date = row.get('Date')
+                steel_particulars = row.get('Particulars')
+                steel_credit = row.get('Credit')
+                steel_debit = row.get('Debit')
+                
+                geotex_uid = row.get('matched_uid')
+                geotex_date = row.get('matched_date')
+                geotex_particulars = row.get('matched_particulars')
+                geotex_credit = row.get('matched_Credit')
+                geotex_debit = row.get('matched_Debit')
+            elif row.get('matched_lender') == 'Steel':
+                # This record is GeoTex, get Steel from matched data
+                geotex_uid = row.get('uid')
+                geotex_date = row.get('Date')
+                geotex_particulars = row.get('Particulars')
+                geotex_credit = row.get('Credit')
+                geotex_debit = row.get('Debit')
+                
+                steel_uid = row.get('matched_uid')
+                steel_date = row.get('matched_date')
+                steel_particulars = row.get('matched_particulars')
+                steel_credit = row.get('matched_Credit')
+                steel_debit = row.get('matched_Debit')
+            else:
+                # Fallback: assume current record is Steel
+                steel_uid = row.get('uid')
+                steel_date = row.get('Date')
+                steel_particulars = row.get('Particulars')
+                steel_credit = row.get('Credit')
+                steel_debit = row.get('Debit')
+                
+                geotex_uid = row.get('matched_uid')
+                geotex_date = row.get('matched_date')
+                geotex_particulars = row.get('matched_particulars')
+                geotex_credit = row.get('matched_Credit')
+                geotex_debit = row.get('matched_Debit')
+            
+            export_rows.append({
+                # Steel (Lender) section
+                'Steel UID': steel_uid,
+                'Steel Date': steel_date,
+                'Steel Particulars': steel_particulars,
+                'Steel Credit': steel_credit,
+                'Steel Debit': steel_debit,
+                # GeoTex (Borrower) section
+                'GeoTex UID': geotex_uid,
+                'GeoTex Date': geotex_date,
+                'GeoTex Particulars': geotex_particulars,
+                'GeoTex Credit': geotex_credit,
+                'GeoTex Debit': geotex_debit,
+                # Match info
+                'Match Score': row.get('match_score'),
+                'Keywords': row.get('keywords')
+            })
+        
+        export_df = pd.DataFrame(export_rows)
+        export_filename = f"matched_transactions_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        export_path = os.path.join('uploads', export_filename)
+        export_df.to_excel(export_path, index=False)
+        return send_from_directory('uploads', export_filename, as_attachment=True)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
