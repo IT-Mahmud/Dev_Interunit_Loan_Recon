@@ -195,7 +195,18 @@ function displayData(data, columnOrder) {
     data.forEach(row => {
         tableHTML += `
             <tr>
-                ${columns.map(col => `<td style="border: 1px solid #dee2e6; padding: 8px;">${row[col] === null || row[col] === undefined ? '' : row[col]}</td>`).join('')}
+                ${columns.map(col => {
+                    let value = row[col];
+                    if (value === null || value === undefined) {
+                        value = '';
+                    } else {
+                        // Format date columns to YYYY-MM-DD
+                        if (col.toLowerCase().includes('date') || col === 'Date') {
+                            value = formatDate(value);
+                        }
+                    }
+                    return `<td style="border: 1px solid #dee2e6; padding: 8px;">${value}</td>`;
+                }).join('')}
             </tr>
         `;
     });
