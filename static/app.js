@@ -340,23 +340,18 @@ function displayMatches(matches) {
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th colspan="5" style="text-align: center; background-color: #e3f2fd;">Steel (Lender)</th>
-                        <th colspan="5" style="text-align: center; background-color: #f3e5f5;">GeoTex (Borrower)</th>
-                        <th>Match Score</th>
-                        <th>Keywords</th>
-                        <th>Actions</th>
-                    </tr>
-                    <tr>
                         <th>UID</th>
                         <th>Date</th>
                         <th>Particulars</th>
                         <th>Credit</th>
                         <th>Debit</th>
+                        <th>Role</th>
                         <th>UID</th>
                         <th>Date</th>
                         <th>Particulars</th>
                         <th>Credit</th>
                         <th>Debit</th>
+                        <th>Role</th>
                         <th>Similarity</th>
                         <th>Matching keywords</th>
                         <th>Accept/Reject</th>
@@ -423,18 +418,32 @@ function displayMatches(matches) {
             geotexUid = match.matched_uid;
         }
         
+        // Determine the role for each party
+        let steelRole = 'Lender';
+        let geotexRole = 'Borrower';
+
+        if (match.owner === 'Steel') {
+            steelRole = 'Lender';
+            geotexRole = 'Borrower';
+        } else if (match.matched_owner === 'Steel') {
+            steelRole = 'Borrower';
+            geotexRole = 'Lender';
+        }
+
         tableHTML += `
             <tr>
                 <td style="font-size: 11px; color: #666;">${steelUid || ''}</td>
                 <td>${formatDate(steelRecord.Date)}</td>
-                <td>${steelRecord.Particulars || ''}</td>
+                <td style="max-width:100px; white-space:pre-line;">${steelRecord.Particulars || ''}</td>
                 <td style="text-align: right; color: green;">${formatAmount(steelRecord.Credit || 0)}</td>
                 <td style="text-align: right; color: red;">${formatAmount(steelRecord.Debit || 0)}</td>
+                <td>${steelRole}</td>
                 <td style="font-size: 11px; color: #666;">${geotexUid || ''}</td>
                 <td>${formatDate(geotexRecord.Date)}</td>
-                <td>${geotexRecord.Particulars || ''}</td>
+                <td style="max-width:100px; white-space:pre-line;">${geotexRecord.Particulars || ''}</td>
                 <td style="text-align: right; color: green;">${formatAmount(geotexRecord.Credit || 0)}</td>
                 <td style="text-align: right; color: red;">${formatAmount(geotexRecord.Debit || 0)}</td>
+                <td>${geotexRole}</td>
                 <td style="text-align: center;">
                     <span class="badge ${match.match_score > 0.7 ? 'bg-success' : match.match_score > 0.5 ? 'bg-warning' : 'bg-danger'}">
                         ${(match.match_score * 100).toFixed(0)}%

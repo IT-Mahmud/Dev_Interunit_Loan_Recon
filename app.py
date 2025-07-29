@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from parser.tally_parser_interunit_loan_recon import parse_tally_file
 import database
 import threading
+from openpyxl.styles import Alignment
 
 app = Flask(__name__)
 
@@ -332,6 +333,18 @@ def download_matches():
                     borrower_debit = row.get('matched_Debit')
                     borrower_vch_type = row.get('matched_Vch_Type')
                 
+                # Determine roles based on the current row's owner
+                if row.get('owner') == lender_name:
+                    lender_role = 'Lender'
+                    borrower_role = 'Borrower'
+                elif row.get('matched_owner') == lender_name:
+                    lender_role = 'Borrower'
+                    borrower_role = 'Lender'
+                else:
+                    lender_role = 'Lender'
+                    borrower_role = 'Borrower'
+
+                # Add Lender Role and Borrower Role columns
                 export_rows.append({
                     # Lender section
                     f'{lender_name} UID': lender_uid,
@@ -340,6 +353,7 @@ def download_matches():
                     f'{lender_name} Credit': lender_credit,
                     f'{lender_name} Debit': lender_debit,
                     f'{lender_name} Vch_Type': lender_vch_type,
+                    f'{lender_name} Role': lender_role,
                     # Borrower section
                     f'{borrower_name} UID': borrower_uid,
                     f'{borrower_name} Date': borrower_date,
@@ -347,6 +361,7 @@ def download_matches():
                     f'{borrower_name} Credit': borrower_credit,
                     f'{borrower_name} Debit': borrower_debit,
                     f'{borrower_name} Vch_Type': borrower_vch_type,
+                    f'{borrower_name} Role': borrower_role,
                     # Match info
                     'Match Score': row.get('match_score'),
                     'Keywords': row.get('keywords')
@@ -363,32 +378,24 @@ def download_matches():
                 # Get the worksheet for formatting
                 worksheet = writer.sheets['Matched Transactions']
                 
-                # Format Particulars columns (columns C and H - 3rd and 8th columns)
-                from openpyxl.styles import Alignment
-                
-                # Steel Particulars column (C)
-                worksheet.column_dimensions['C'].width = 100
-                for cell in worksheet['C']:
-                    cell.alignment = Alignment(wrap_text=True)
-                
-                # GeoTex Particulars column (H)
-                worksheet.column_dimensions['H'].width = 100
-                for cell in worksheet['H']:
-                    cell.alignment = Alignment(wrap_text=True)
-                
-                # Autofit all other columns
-                for column in worksheet.columns:
-                    column_letter = column[0].column_letter
-                    if column_letter not in ['C', 'H']:  # Skip Particulars columns
+                # Find columns with 'Particulars' in the header
+                particulars_cols = [i+1 for i, col in enumerate(export_df.columns) if 'Particulars' in col]
+
+                for col_idx in range(1, len(export_df.columns)+1):
+                    col_letter = worksheet.cell(row=1, column=col_idx).column_letter
+                    if col_idx in particulars_cols:
+                        worksheet.column_dimensions[col_letter].width = 100
+                        for cell in worksheet[col_letter]:
+                            cell.alignment = Alignment(wrap_text=True)
+                    else:
                         max_length = 0
-                        for cell in column:
+                        for cell in worksheet[col_letter]:
                             try:
-                                if len(str(cell.value)) > max_length:
+                                if cell.value and len(str(cell.value)) > max_length:
                                     max_length = len(str(cell.value))
                             except:
                                 pass
-                        adjusted_width = min(max_length + 2, 50)  # Add padding, max 50
-                        worksheet.column_dimensions[column_letter].width = adjusted_width
+                        worksheet.column_dimensions[col_letter].width = min(max_length + 2, 50)
             
             return send_from_directory('uploads', export_filename, as_attachment=True)
     except Exception as e:
