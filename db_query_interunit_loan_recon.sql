@@ -3,7 +3,7 @@ USE interunit_loan_recon_db;
 
 CREATE TABLE IF NOT EXISTS tally_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    uid VARCHAR(64) UNIQUE,
+    uid VARCHAR(64),
     owner VARCHAR(32),
     counterparty VARCHAR(32),
     statement_month VARCHAR(16),
@@ -20,6 +20,6 @@ CREATE TABLE IF NOT EXISTS tally_data (
     match_status VARCHAR(16),
     matched_with VARCHAR(64),
     match_score FLOAT,
-    reconciliation_date DATETIME,
+    date_matched DATETIME,
     keywords TEXT
-	);
+);

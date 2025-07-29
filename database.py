@@ -367,7 +367,7 @@ def update_matches(matches):
                 SET matched_with = :matched_with, 
                     match_status = 'matched', 
                     match_score = NULL, 
-                    reconciliation_date = NOW(),
+                    date_matched = NOW(),
                     keywords = :keywords
                 WHERE uid = :borrower_uid
             """), {
@@ -381,7 +381,7 @@ def update_matches(matches):
                 SET matched_with = :matched_with, 
                     match_status = 'matched', 
                     match_score = NULL, 
-                    reconciliation_date = NOW(),
+                    date_matched = NOW(),
                     keywords = :keywords
                 WHERE uid = :lender_uid
             """), {
@@ -414,7 +414,7 @@ def get_matched_data():
             LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
             WHERE (t1.match_status = 'matched' OR t1.match_status = 'confirmed')
             AND t1.matched_with IS NOT NULL
-            ORDER BY t1.reconciliation_date DESC
+            ORDER BY t1.date_matched DESC
         """))
         
         records = []
@@ -445,7 +445,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
                         match_score = NULL,
-                        reconciliation_date = NULL
+                        date_matched = NULL
                     WHERE uid = :uid
                     """
                     conn.execute(text(sql_reset_main), {'uid': uid})
@@ -456,7 +456,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
                         match_score = NULL,
-                        reconciliation_date = NULL
+                        date_matched = NULL
                     WHERE uid = :matched_with_uid
                     """
                     conn.execute(text(sql_reset_matched), {'matched_with_uid': matched_with_uid})
@@ -468,7 +468,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
                         match_score = NULL,
-                        reconciliation_date = NULL
+                        date_matched = NULL
                     WHERE uid = :uid
                     """
                     conn.execute(text(sql_reset_main), {'uid': uid})
@@ -488,7 +488,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     sql_update_main = """
                     UPDATE tally_data 
                     SET match_status = :status, 
-                        reconciliation_date = NOW(),
+                        date_matched = NOW(),
                         confirmed_by = :confirmed_by
                     WHERE uid = :uid
                     """
@@ -502,7 +502,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     sql_update_matched = """
                     UPDATE tally_data 
                     SET match_status = :status, 
-                        reconciliation_date = NOW(),
+                        date_matched = NOW(),
                         confirmed_by = :confirmed_by
                     WHERE uid = :matched_with_uid
                     """
@@ -516,7 +516,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     sql_update_main = """
                     UPDATE tally_data 
                     SET match_status = :status, 
-                        reconciliation_date = NOW(),
+                        date_matched = NOW(),
                         confirmed_by = :confirmed_by
                     WHERE uid = :uid
                     """
@@ -545,7 +545,7 @@ def get_pending_matches():
         FROM tally_data t1
         LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
         WHERE t1.match_status = 'matched' AND t1.confirmed_by IS NULL
-        ORDER BY t1.reconciliation_date DESC
+        ORDER BY t1.date_matched DESC
         """
         
         df = pd.read_sql(sql, engine)
@@ -576,7 +576,7 @@ def get_confirmed_matches():
         FROM tally_data t1
         LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
         WHERE t1.match_status = 'confirmed' AND t1.confirmed_by IS NOT NULL
-        ORDER BY t1.reconciliation_date DESC
+        ORDER BY t1.date_matched DESC
         """
         
         df = pd.read_sql(sql, engine)
