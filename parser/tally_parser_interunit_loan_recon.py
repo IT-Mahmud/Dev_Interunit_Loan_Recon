@@ -167,6 +167,17 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
 
     df['entered_by'] = entered_by_list
 
+    # Add owner and counterparty columns
+    df['owner'] = lender
+    # Extract counterparty from metadata/header rows (not transaction rows)
+    counterparty = ''
+    for row in metadata[0]:
+        match = re.search(r'Interunit Loan\s+A/C-([\w\s&.()/-]+?)\s+Unit\.?', str(row), re.IGNORECASE)
+        if match:
+            counterparty = match.group(1).strip()
+            break
+    df['counterparty'] = counterparty
+
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(
             df["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -195,18 +206,21 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
                 hexbal = to_hex(round(float(str(balance_val).replace(",", ""))))
             except Exception:
                 hexbal = ""
-            # Add lender prefix to make uid unique across files
+            # Add owner prefix to make uid unique across files
             uid = f"{lender}_{hexdate}_{hexbal}_{rownum:06d}"
             uids.append(uid)
             rownum += 1
         else:
             uids.append("")
     df["uid"] = uids
-    cols = ["uid", "lender", "borrower", "statement_month", "statement_year"] + \
-        [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year"]]
+    
+    # Add input_date column
+    from datetime import datetime
+    df['input_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    cols = ["uid", "owner", "counterparty", "statement_month", "statement_year"] + \
+        [c for c in df.columns if c not in ["uid", "owner", "counterparty", "statement_month", "statement_year"]]
 
-    df["lender"] = lender
-    df["borrower"] = borrower
     df["statement_month"] = ledger_date
     df["statement_year"] = ledger_year
     df = df[cols]
@@ -225,9 +239,6 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
         "Credit": "Credit",
     }
     df = df.rename(columns=new_column_names)
-    # Add input_date column with current datetime for all rows
-    input_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    df['input_date'] = input_date
     return df
 
 if __name__ == "__main__":

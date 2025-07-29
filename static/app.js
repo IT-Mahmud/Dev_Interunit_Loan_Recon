@@ -3,6 +3,9 @@
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     loadData();
+    if (document.getElementById('recent-uploads-list')) {
+        loadRecentUploads();
+    }
 });
 
 // Tab switching function
@@ -128,6 +131,7 @@ async function uploadFile() {
             
             // Reload data
             loadData();
+            loadRecentUploads();
             
             // Clear success message after 5 seconds
             setTimeout(() => {
@@ -362,40 +366,43 @@ function displayMatches(matches) {
     `;
     
     matches.forEach(match => {
-        // Determine which record is Steel and which is GeoTex based on lender field
-        let steelRecord, geotexRecord;
-        let steelUid, geotexUid;
+        // Determine which record is Steel and which is GeoTex based on owner field
+        let steelRecord, geotexRecord, steelUid, geotexUid;
         
-        if (match.lender === 'Steel') {
-            // This record is Steel, get GeoTex from matched data
+        if (match.owner === 'Steel') {
             steelRecord = {
                 Date: match.Date,
                 Particulars: match.Particulars,
                 Credit: match.Credit,
-                Debit: match.Debit
+                Debit: match.Debit,
+                Vch_Type: match.Vch_Type
             };
             steelUid = match.uid;
+            
             geotexRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
-                Debit: match.matched_Debit
+                Debit: match.matched_Debit,
+                Vch_Type: match.matched_Vch_Type
             };
             geotexUid = match.matched_uid;
-        } else if (match.matched_lender === 'Steel') {
-            // This record is GeoTex, get Steel from matched data
+        } else if (match.matched_owner === 'Steel') {
             geotexRecord = {
                 Date: match.Date,
                 Particulars: match.Particulars,
                 Credit: match.Credit,
-                Debit: match.Debit
+                Debit: match.Debit,
+                Vch_Type: match.Vch_Type
             };
             geotexUid = match.uid;
+            
             steelRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
-                Debit: match.matched_Debit
+                Debit: match.matched_Debit,
+                Vch_Type: match.matched_Vch_Type
             };
             steelUid = match.matched_uid;
         } else {
@@ -539,5 +546,39 @@ function formatAmount(amount) {
         });
     } catch {
         return amount;
+    }
+} 
+
+// Fetch and display recent uploads
+async function loadRecentUploads() {
+    try {
+        const response = await fetch('/api/recent-uploads');
+        const result = await response.json();
+        const container = document.getElementById('recent-uploads-list');
+        if (response.ok && result.recent_uploads && result.recent_uploads.length > 0) {
+            let html = '<div class="recent-uploads-heading">Recent uploads</div>';
+            html += '<ul class="recent-uploads-ul">';
+            result.recent_uploads.forEach(f => {
+                html += `<li class="recent-upload-item">${f}</li>`;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '';
+        }
+    } catch (error) {
+        document.getElementById('recent-uploads-list').innerHTML = '';
+    }
+} 
+
+// Add Clear File List button handler
+async function clearRecentUploads() {
+    try {
+        const response = await fetch('/api/clear-recent-uploads', { method: 'POST' });
+        if (response.ok) {
+            loadRecentUploads();
+        }
+    } catch (error) {
+        // Ignore
     }
 } 
