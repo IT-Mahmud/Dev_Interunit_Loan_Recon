@@ -73,32 +73,30 @@ def get_data(filters=None):
         return []
 
 def get_filters():
-    """Get filter options"""
-    try:
-        ensure_table_exists('tally_data')
-        
-        filters = {}
-        
-        # Get owners
-        df = pd.read_sql("SELECT DISTINCT owner FROM tally_data WHERE owner IS NOT NULL", engine)
-        filters['owners'] = df['owner'].tolist()
-        
-        # Get counterparties
-        df = pd.read_sql("SELECT DISTINCT counterparty FROM tally_data WHERE counterparty IS NOT NULL", engine)
-        filters['counterparties'] = df['counterparty'].tolist()
-        
-        # Get months
-        df = pd.read_sql("SELECT DISTINCT statement_month FROM tally_data WHERE statement_month IS NOT NULL", engine)
-        filters['months'] = df['statement_month'].tolist()
-        
-        # Get years
-        df = pd.read_sql("SELECT DISTINCT statement_year FROM tally_data WHERE statement_year IS NOT NULL", engine)
-        filters['years'] = df['statement_year'].tolist()
-        
-        return filters
-    except Exception as e:
-        print(f"Error getting filters: {e}")
-        return {}
+    """Get available filters for the data"""
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    filters = {}
+    
+    # Get lenders
+    df = pd.read_sql("SELECT DISTINCT lender FROM tally_data WHERE lender IS NOT NULL", engine)
+    filters['lenders'] = df['lender'].tolist()
+    
+    # Get borrowers
+    df = pd.read_sql("SELECT DISTINCT borrower FROM tally_data WHERE borrower IS NOT NULL", engine)
+    filters['borrowers'] = df['borrower'].tolist()
+    
+    # Get statement months
+    df = pd.read_sql("SELECT DISTINCT statement_month FROM tally_data WHERE statement_month IS NOT NULL", engine)
+    filters['statement_months'] = df['statement_month'].tolist()
+    
+    # Get statement years
+    df = pd.read_sql("SELECT DISTINCT statement_year FROM tally_data WHERE statement_year IS NOT NULL", engine)
+    filters['statement_years'] = df['statement_year'].tolist()
+    
+    return filters
 
 def get_unmatched_data():
     """Get all unmatched transactions"""
@@ -401,19 +399,19 @@ def get_matched_data():
         result = conn.execute(text("""
             SELECT 
                 t1.*,
-                t2.owner as matched_owner, 
-                t2.counterparty as matched_counterparty,
+                t2.lender as matched_lender, 
+                t2.borrower as matched_borrower,
                 t2.Particulars as matched_particulars, 
                 t2.Date as matched_date,
                 t2.Debit as matched_Debit, 
                 t2.Credit as matched_Credit,
                 t2.keywords as matched_keywords,
                 t2.uid as matched_uid,
-                t2.Vch_Type as matched_Vch_Type
+                t2.Vch_Type as matched_Vch_Type,
+                t2.role as matched_role
             FROM tally_data t1
             LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
-            WHERE (t1.match_status = 'matched' OR t1.match_status = 'confirmed')
-            AND t1.matched_with IS NOT NULL
+            WHERE t1.match_status = 'matched'
             ORDER BY t1.date_matched DESC
         """))
         
@@ -534,66 +532,58 @@ def update_match_status(uid, status, confirmed_by=None):
         return False
 
 def get_pending_matches():
-    """Get matches that need user confirmation"""
-    try:
-        ensure_table_exists('tally_data')
-        
-        sql = """
-        SELECT t1.*, t2.owner as matched_owner, t2.counterparty as matched_counterparty,
+    """Get pending matches"""
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT 
+                t1.*, t2.lender as matched_lender, t2.borrower as matched_borrower,
                t2.Particulars as matched_particulars, t2.Date as matched_date,
-               t2.Debit as matched_Debit, t2.Credit as matched_Credit
+                t2.Debit as matched_Debit, t2.Credit as matched_Credit,
+                t2.keywords as matched_keywords, t2.uid as matched_uid,
+                t2.Vch_Type as matched_Vch_Type, t2.role as matched_role
         FROM tally_data t1
-        LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
-        WHERE t1.match_status = 'matched' AND t1.confirmed_by IS NULL
-        ORDER BY t1.date_matched DESC
-        """
+            LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
+            WHERE t1.match_status = 'matched'
+            ORDER BY t1.date_matched DESC
+        """))
         
-        df = pd.read_sql(sql, engine)
-        
-        # Convert to records and handle NaN values
-        records = df.to_dict('records')
-        
-        # Replace NaN values with None for JSON serialization
-        for record in records:
-            for key, value in record.items():
-                if pd.isna(value):
-                    record[key] = None
+        records = []
+        for row in result:
+            record = dict(row._mapping)
+            records.append(record)
         
         return records
-    except Exception as e:
-        print(f"Error getting pending matches: {e}")
-        return []
 
 def get_confirmed_matches():
     """Get confirmed matches"""
-    try:
-        ensure_table_exists('tally_data')
-        
-        sql = """
-        SELECT t1.*, t2.owner as matched_owner, t2.counterparty as matched_counterparty,
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT 
+                t1.*, t2.lender as matched_lender, t2.borrower as matched_borrower,
                t2.Particulars as matched_particulars, t2.Date as matched_date,
-               t2.Debit as matched_Debit, t2.Credit as matched_Credit
+                t2.Debit as matched_Debit, t2.Credit as matched_Credit,
+                t2.keywords as matched_keywords, t2.uid as matched_uid,
+                t2.Vch_Type as matched_Vch_Type, t2.role as matched_role
         FROM tally_data t1
-        LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
-        WHERE t1.match_status = 'confirmed' AND t1.confirmed_by IS NOT NULL
-        ORDER BY t1.date_matched DESC
-        """
+            LEFT JOIN tally_data t2 ON t1.matched_with = t2.uid
+            WHERE t1.match_status = 'confirmed'
+            ORDER BY t1.date_matched DESC
+        """))
         
-        df = pd.read_sql(sql, engine)
-        
-        # Convert to records and handle NaN values
-        records = df.to_dict('records')
-        
-        # Replace NaN values with None for JSON serialization
-        for record in records:
-            for key, value in record.items():
-                if pd.isna(value):
-                    record[key] = None
+        records = []
+        for row in result:
+            record = dict(row._mapping)
+            records.append(record)
         
         return records
-    except Exception as e:
-        print(f"Error getting confirmed matches: {e}")
-        return [] 
 
 def reset_match_status():
     """Reset all match status columns to clear previous matches"""

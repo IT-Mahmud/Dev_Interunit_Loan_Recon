@@ -134,26 +134,24 @@ def get_filters():
 
 @app.route('/api/export', methods=['GET'])
 def export_data():
-    """Export data to Excel"""
+    """Export filtered data to Excel"""
     try:
         filters = {}
-        if request.args.get('owner'):
-            filters['owner'] = request.args.get('owner')
-        if request.args.get('counterparty'):
-            filters['counterparty'] = request.args.get('counterparty')
+        if request.args.get('lender'):
+            filters['lender'] = request.args.get('lender')
+        if request.args.get('borrower'):
+            filters['borrower'] = request.args.get('borrower')
         if request.args.get('statement_month'):
             filters['statement_month'] = request.args.get('statement_month')
         if request.args.get('statement_year'):
             filters['statement_year'] = request.args.get('statement_year')
         
         data = database.get_data(filters)
-        
         if not data:
             return jsonify({'error': 'No data found'}), 404
         
-        # Convert to DataFrame and export
         df = pd.DataFrame(data)
-        export_filename = f"export_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        export_filename = f"tally_data_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         export_path = os.path.join('uploads', export_filename)
         
         df.to_excel(export_path, index=False)
@@ -265,30 +263,35 @@ def download_matches():
         borrower_name = 'Borrower'
         if len(df) > 0:
             first_row = df.iloc[0]
-            # Determine which is lender (Credit side) vs borrower (Debit side)
-            if first_row.get('Credit') and first_row.get('Credit') > 0:
-                # Main record is lender (Credit side)
-                lender_name = first_row.get('owner', 'Lender')
-                borrower_name = first_row.get('matched_owner', 'Borrower')
-            elif first_row.get('matched_Credit') and first_row.get('matched_Credit') > 0:
-                # Matched record is lender (Credit side)
-                lender_name = first_row.get('matched_owner', 'Lender')
-                borrower_name = first_row.get('owner', 'Borrower')
+            # Determine which is lender (Debit side) vs borrower (Credit side)
+            if first_row.get('Debit') and first_row.get('Debit') > 0:
+                # Main record is lender (Debit side)
+                lender_name = first_row.get('lender', 'Lender')
+                borrower_name = first_row.get('matched_lender', 'Borrower')
+            elif first_row.get('matched_Debit') and first_row.get('matched_Debit') > 0:
+                # Matched record is lender (Debit side)
+                lender_name = first_row.get('matched_lender', 'Lender')
+                borrower_name = first_row.get('lender', 'Borrower')
             else:
                 # Fallback to original logic
-                if first_row.get('owner'):
-                    lender_name = first_row['owner']
-                if first_row.get('matched_owner') and first_row['matched_owner'] != first_row.get('owner'):
-                    borrower_name = first_row['matched_owner']
-                elif first_row.get('counterparty'):
-                    borrower_name = first_row['counterparty']
+                if first_row.get('lender'):
+                    lender_name = first_row['lender']
+                if first_row.get('matched_lender') and first_row['matched_lender'] != first_row.get('lender'):
+                    borrower_name = first_row['matched_lender']
+                elif first_row.get('borrower'):
+                    borrower_name = first_row['borrower']
             
             # Build rows matching the table structure exactly
             export_rows = []
             for _, row in df.iterrows():
-                # Determine which record is lender and which is borrower (same logic as frontend)
-                if row.get('owner') == lender_name:
-                    # This record is lender, get borrower from matched data
+                # Determine which record is lender and which is borrower based on Debit/Credit values
+                main_record_debit = float(row.get('Debit', 0) or 0)
+                main_record_credit = float(row.get('Credit', 0) or 0)
+                matched_record_debit = float(row.get('matched_Debit', 0) or 0)
+                matched_record_credit = float(row.get('matched_Credit', 0) or 0)
+                
+                if main_record_debit > 0:
+                    # Main record is Lender (Debit > 0)
                     lender_uid = row.get('uid')
                     lender_date = row.get('Date')
                     lender_particulars = row.get('Particulars')
@@ -302,47 +305,63 @@ def download_matches():
                     borrower_credit = row.get('matched_Credit')
                     borrower_debit = row.get('matched_Debit')
                     borrower_vch_type = row.get('matched_Vch_Type')
-                elif row.get('matched_owner') == lender_name:
-                    # This record is borrower, get lender from matched data
-                    borrower_uid = row.get('uid')
-                    borrower_date = row.get('Date')
-                    borrower_particulars = row.get('Particulars')
-                    borrower_credit = row.get('Credit')
-                    borrower_debit = row.get('Debit')
-                    borrower_vch_type = row.get('Vch_Type')
-                    
+                elif matched_record_debit > 0:
+                    # Matched record is Lender (Debit > 0)
                     lender_uid = row.get('matched_uid')
                     lender_date = row.get('matched_date')
                     lender_particulars = row.get('matched_particulars')
                     lender_credit = row.get('matched_Credit')
                     lender_debit = row.get('matched_Debit')
                     lender_vch_type = row.get('matched_Vch_Type')
-                else:
-                    # Fallback: assume current record is lender
-                    lender_uid = row.get('uid')
-                    lender_date = row.get('Date')
-                    lender_particulars = row.get('Particulars')
-                    lender_credit = row.get('Credit')
-                    lender_debit = row.get('Debit')
-                    lender_vch_type = row.get('Vch_Type')
                     
-                    borrower_uid = row.get('matched_uid')
-                    borrower_date = row.get('matched_date')
-                    borrower_particulars = row.get('matched_particulars')
-                    borrower_credit = row.get('matched_Credit')
-                    borrower_debit = row.get('matched_Debit')
-                    borrower_vch_type = row.get('matched_Vch_Type')
-                
-                # Determine roles based on the current row's owner
-                if row.get('owner') == lender_name:
-                    lender_role = 'Lender'
-                    borrower_role = 'Borrower'
-                elif row.get('matched_owner') == lender_name:
-                    lender_role = 'Borrower'
-                    borrower_role = 'Lender'
+                    borrower_uid = row.get('uid')
+                    borrower_date = row.get('Date')
+                    borrower_particulars = row.get('Particulars')
+                    borrower_credit = row.get('Credit')
+                    borrower_debit = row.get('Debit')
+                    borrower_vch_type = row.get('Vch_Type')
                 else:
-                    lender_role = 'Lender'
-                    borrower_role = 'Borrower'
+                    # Fallback: use the original logic based on lender_name
+                    if row.get('lender') == lender_name:
+                        lender_uid = row.get('uid')
+                        lender_date = row.get('Date')
+                        lender_particulars = row.get('Particulars')
+                        lender_credit = row.get('Credit')
+                        lender_debit = row.get('Debit')
+                        lender_vch_type = row.get('Vch_Type')
+                        
+                        borrower_uid = row.get('matched_uid')
+                        borrower_date = row.get('matched_date')
+                        borrower_particulars = row.get('matched_particulars')
+                        borrower_credit = row.get('matched_Credit')
+                        borrower_debit = row.get('matched_Debit')
+                        borrower_vch_type = row.get('matched_Vch_Type')
+                    else:
+                        borrower_uid = row.get('uid')
+                        borrower_date = row.get('Date')
+                        borrower_particulars = row.get('Particulars')
+                        borrower_credit = row.get('Credit')
+                        borrower_debit = row.get('Debit')
+                        borrower_vch_type = row.get('Vch_Type')
+                        
+                        lender_uid = row.get('matched_uid')
+                        lender_date = row.get('matched_date')
+                        lender_particulars = row.get('matched_particulars')
+                        lender_credit = row.get('matched_Credit')
+                        lender_debit = row.get('matched_Debit')
+                        lender_vch_type = row.get('matched_Vch_Type')
+                
+                # Determine roles based on Debit/Credit values
+                if main_record_debit > 0:
+                    lender_role = 'Lender'  # Main record has Debit > 0
+                    borrower_role = 'Borrower'  # Matched record has Credit > 0
+                elif matched_record_debit > 0:
+                    lender_role = 'Lender'  # Matched record has Debit > 0
+                    borrower_role = 'Borrower'  # Main record has Credit > 0
+                else:
+                    # Fallback: determine based on actual values
+                    lender_role = 'Lender' if lender_debit and float(lender_debit) > 0 else 'Borrower'
+                    borrower_role = 'Borrower' if borrower_credit and float(borrower_credit) > 0 else 'Lender'
 
                 # Add Lender Role and Borrower Role columns
                 export_rows.append({

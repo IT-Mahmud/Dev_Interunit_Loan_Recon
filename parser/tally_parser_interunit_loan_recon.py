@@ -167,16 +167,37 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
 
     df['entered_by'] = entered_by_list
 
-    # Add owner and counterparty columns
-    df['owner'] = lender
-    # Extract counterparty from metadata/header rows (not transaction rows)
-    counterparty = ''
-    for row in metadata[0]:
+    # Add lender and borrower columns (these are the company names from the file)
+    df['lender'] = lender
+    # Extract borrower from metadata/header rows (not transaction rows)
+    borrower = ''
+    for row in metadata[0]: # Iterate through the first column of metadata DataFrame
         match = re.search(r'Interunit Loan\s+A/C-([\w\s&.()/-]+?)\s+Unit\.?', str(row), re.IGNORECASE)
         if match:
-            counterparty = match.group(1).strip()
+            borrower = match.group(1).strip()
             break
-    df['counterparty'] = counterparty
+    df['borrower'] = borrower
+
+    # Add role column based on Debit/Credit
+    def determine_role(row):
+        debit_val = row.get('Debit', 0)
+        credit_val = row.get('Credit', 0)
+        
+        # Convert to float, handle empty/None values
+        try:
+            debit_float = float(debit_val) if debit_val and str(debit_val).strip() != '' else 0
+            credit_float = float(credit_val) if credit_val and str(credit_val).strip() != '' else 0
+        except (ValueError, TypeError):
+            return None
+            
+        if debit_float > 0:
+            return 'Lender'
+        elif credit_float > 0:
+            return 'Borrower'
+        else:
+            return None
+    
+    df['role'] = df.apply(determine_role, axis=1)
 
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(
@@ -218,8 +239,8 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
     from datetime import datetime
     df['input_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    cols = ["uid", "owner", "counterparty", "statement_month", "statement_year"] + \
-        [c for c in df.columns if c not in ["uid", "owner", "counterparty", "statement_month", "statement_year"]]
+    cols = ["uid", "lender", "borrower", "statement_month", "statement_year", "role"] + \
+        [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year", "role"]]
 
     df["statement_month"] = ledger_date
     df["statement_year"] = ledger_year

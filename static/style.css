@@ -438,3 +438,128 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 115px;
     max-width: 115px;
 } 
+
+/* Matched Transactions Table - Excel-like formatting */
+.matched-transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: 'Ubuntu', 'Segoe UI', sans-serif;
+    background: #fff;
+    table-layout: auto;
+}
+
+.matched-transactions-table th, 
+.matched-transactions-table td {
+    border: 1px solid #e1e6ef;
+    font-size: 11px;
+    font-family: 'Ubuntu', 'Segoe UI', sans-serif;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.matched-transactions-table th {
+    background: #f8f9fa;
+    color: #374767;
+    font-weight: 700;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Auto-fit all columns by default */
+.matched-transactions-table th,
+.matched-transactions-table td {
+    width: auto;
+    min-width: 60px;
+    max-width: none;
+}
+
+/* Particulars columns - 300px width with text wrapping */
+.matched-transactions-table th[data-column="particulars"],
+.matched-transactions-table td[data-column="particulars"] {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+}
+
+/* UID columns - auto-fit with smaller font */
+.matched-transactions-table th[data-column="uid"],
+.matched-transactions-table td[data-column="uid"] {
+    font-size: 10px;
+    min-width: 80px;
+}
+
+/* Date columns - auto-fit */
+.matched-transactions-table th[data-column="date"],
+.matched-transactions-table td[data-column="date"] {
+    min-width: 70px;
+}
+
+/* Credit/Debit columns - right aligned, auto-fit */
+.matched-transactions-table th[data-column="credit"],
+.matched-transactions-table td[data-column="credit"],
+.matched-transactions-table th[data-column="debit"],
+.matched-transactions-table td[data-column="debit"] {
+    text-align: right;
+    min-width: 80px;
+}
+
+/* Vch_Type columns - auto-fit */
+.matched-transactions-table th[data-column="vch_type"],
+.matched-transactions-table td[data-column="vch_type"] {
+    min-width: 70px;
+}
+
+/* Role columns - center aligned, auto-fit */
+.matched-transactions-table th[data-column="role"],
+.matched-transactions-table td[data-column="role"] {
+    text-align: center;
+    min-width: 60px;
+}
+
+/* Match Score column - center aligned, auto-fit */
+.matched-transactions-table th[data-column="match_score"],
+.matched-transactions-table td[data-column="match_score"] {
+    text-align: center;
+    min-width: 70px;
+}
+
+/* Keywords column - auto-fit with wrapping */
+.matched-transactions-table th[data-column="keywords"],
+.matched-transactions-table td[data-column="keywords"] {
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    font-size: 10px;
+    min-width: 120px;
+}
+
+/* Actions column - center aligned, auto-fit */
+.matched-transactions-table th[data-column="actions"],
+.matched-transactions-table td[data-column="actions"] {
+    text-align: center;
+    min-width: 100px;
+}
+
+/* Matched transactions table wrapper */
+.matched-transactions-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
+    margin-bottom: 18px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #e1e6ef;
+    background: #fff;
+}
+
+/* Column widths - fixed to prevent expansion */ 

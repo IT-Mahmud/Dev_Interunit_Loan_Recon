@@ -334,125 +334,185 @@ function displayMatches(matches) {
         return;
     }
     
+    // Get dynamic lender/borrower names from the first match (same logic as Excel export)
+    let lender_name = 'Lender';
+    let borrower_name = 'Borrower';
+    if (matches.length > 0) {
+        const first_match = matches[0];
+        // Determine which is lender (Debit side) vs borrower (Credit side)
+        if (first_match.Debit && first_match.Debit > 0) {
+            // Main record is lender (Debit side)
+            lender_name = first_match.lender || 'Lender';
+            borrower_name = first_match.matched_lender || 'Borrower';
+        } else if (first_match.matched_Debit && first_match.matched_Debit > 0) {
+            // Matched record is lender (Debit side)
+            lender_name = first_match.matched_lender || 'Lender';
+            borrower_name = first_match.lender || 'Borrower';
+        } else {
+            // Fallback to original logic
+            if (first_match.lender) {
+                lender_name = first_match.lender;
+            }
+            if (first_match.matched_lender && first_match.matched_lender !== first_match.lender) {
+                borrower_name = first_match.matched_lender;
+            } else if (first_match.borrower) {
+                borrower_name = first_match.borrower;
+            }
+        }
+    }
+    
     let tableHTML = `
-        <div class="report-table-wrapper">
+        <div class="matched-transactions-wrapper">
             <h4>Matched Transactions (${matches.length} pairs)</h4>
-            <table class="report-table">
+            <table class="matched-transactions-table">
                 <thead>
                     <tr>
-                        <th>UID</th>
-                        <th>Date</th>
-                        <th>Particulars</th>
-                        <th>Credit</th>
-                        <th>Debit</th>
-                        <th>Role</th>
-                        <th>UID</th>
-                        <th>Date</th>
-                        <th>Particulars</th>
-                        <th>Credit</th>
-                        <th>Debit</th>
-                        <th>Role</th>
-                        <th>Similarity</th>
-                        <th>Matching keywords</th>
-                        <th>Accept/Reject</th>
+                        <th data-column="uid">${lender_name} UID</th>
+                        <th data-column="date">${lender_name} Date</th>
+                        <th data-column="particulars">${lender_name} Particulars</th>
+                        <th data-column="credit">${lender_name} Credit</th>
+                        <th data-column="debit">${lender_name} Debit</th>
+                        <th data-column="vch_type">${lender_name} Vch_Type</th>
+                        <th data-column="role">${lender_name} Role</th>
+                        <th data-column="uid">${borrower_name} UID</th>
+                        <th data-column="date">${borrower_name} Date</th>
+                        <th data-column="particulars">${borrower_name} Particulars</th>
+                        <th data-column="credit">${borrower_name} Credit</th>
+                        <th data-column="debit">${borrower_name} Debit</th>
+                        <th data-column="vch_type">${borrower_name} Vch_Type</th>
+                        <th data-column="role">${borrower_name} Role</th>
+                        <th data-column="match_score">Match Score</th>
+                        <th data-column="keywords">Keywords</th>
+                        <th data-column="actions">Accept/Reject</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
     matches.forEach(match => {
-        // Determine which record is Steel and which is GeoTex based on owner field
-        let steelRecord, geotexRecord, steelUid, geotexUid;
+        // Determine which record is lender and which is borrower based on Debit/Credit values
+        let lenderRecord, borrowerRecord, lenderUid, borrowerUid, lenderRole, borrowerRole;
         
-        if (match.owner === 'Steel') {
-            steelRecord = {
+        // Check which record has Debit > 0 (Lender) vs Credit > 0 (Borrower)
+        const main_record_debit = parseFloat(match.Debit || 0);
+        const main_record_credit = parseFloat(match.Credit || 0);
+        const matched_record_debit = parseFloat(match.matched_Debit || 0);
+        const matched_record_credit = parseFloat(match.matched_Credit || 0);
+        
+        if (main_record_debit > 0) {
+            // Main record is Lender (Debit > 0)
+            lenderRecord = {
                 Date: match.Date,
                 Particulars: match.Particulars,
                 Credit: match.Credit,
                 Debit: match.Debit,
                 Vch_Type: match.Vch_Type
             };
-            steelUid = match.uid;
+            lenderUid = match.uid;
+            lenderRole = 'Lender'; // Correct - Debit > 0 = Lender
             
-            geotexRecord = {
+            borrowerRecord = {
                 Date: match.matched_date,
                 Particulars: match.matched_particulars,
                 Credit: match.matched_Credit,
                 Debit: match.matched_Debit,
                 Vch_Type: match.matched_Vch_Type
             };
-            geotexUid = match.matched_uid;
-        } else if (match.matched_owner === 'Steel') {
-            geotexRecord = {
+            borrowerUid = match.matched_uid;
+            borrowerRole = 'Borrower'; // Correct - Credit > 0 = Borrower
+        } else if (matched_record_debit > 0) {
+            // Matched record is Lender (Debit > 0)
+            lenderRecord = {
+                Date: match.matched_date,
+                Particulars: match.matched_particulars,
+                Credit: match.matched_Credit,
+                Debit: match.matched_Debit,
+                Vch_Type: match.matched_Vch_Type
+            };
+            lenderUid = match.matched_uid;
+            lenderRole = 'Lender'; // Correct - Debit > 0 = Lender
+            
+            borrowerRecord = {
                 Date: match.Date,
                 Particulars: match.Particulars,
                 Credit: match.Credit,
                 Debit: match.Debit,
                 Vch_Type: match.Vch_Type
             };
-            geotexUid = match.uid;
-            
-            steelRecord = {
-                Date: match.matched_date,
-                Particulars: match.matched_particulars,
-                Credit: match.matched_Credit,
-                Debit: match.matched_Debit,
-                Vch_Type: match.matched_Vch_Type
-            };
-            steelUid = match.matched_uid;
+            borrowerUid = match.uid;
+            borrowerRole = 'Borrower'; // Correct - Credit > 0 = Borrower
         } else {
-            // Fallback: assume current record is Steel if we can't determine
-            steelRecord = {
-                Date: match.Date,
-                Particulars: match.Particulars,
-                Credit: match.Credit,
-                Debit: match.Debit
-            };
-            steelUid = match.uid;
-            geotexRecord = {
-                Date: match.matched_date,
-                Particulars: match.matched_particulars,
-                Credit: match.matched_Credit,
-                Debit: match.matched_Debit
-            };
-            geotexUid = match.matched_uid;
+            // Fallback: use the original logic based on lender_name
+            if (match.lender === lender_name) {
+                lenderRecord = {
+                    Date: match.Date,
+                    Particulars: match.Particulars,
+                    Credit: match.Credit,
+                    Debit: match.Debit,
+                    Vch_Type: match.Vch_Type
+                };
+                lenderUid = match.uid;
+                // Determine role based on Debit/Credit
+                lenderRole = (parseFloat(match.Debit || 0) > 0) ? 'Lender' : 'Borrower';
+                
+                borrowerRecord = {
+                    Date: match.matched_date,
+                    Particulars: match.matched_particulars,
+                    Credit: match.matched_Credit,
+                    Debit: match.matched_Debit,
+                    Vch_Type: match.matched_Vch_Type
+                };
+                borrowerUid = match.matched_uid;
+                // Determine role based on Debit/Credit
+                borrowerRole = (parseFloat(match.matched_Debit || 0) > 0) ? 'Lender' : 'Borrower';
+            } else {
+                borrowerRecord = {
+                    Date: match.Date,
+                    Particulars: match.Particulars,
+                    Credit: match.Credit,
+                    Debit: match.Debit,
+                    Vch_Type: match.Vch_Type
+                };
+                borrowerUid = match.uid;
+                // Determine role based on Debit/Credit
+                borrowerRole = (parseFloat(match.Debit || 0) > 0) ? 'Lender' : 'Borrower';
+                
+                lenderRecord = {
+                    Date: match.matched_date,
+                    Particulars: match.matched_particulars,
+                    Credit: match.matched_Credit,
+                    Debit: match.matched_Debit,
+                    Vch_Type: match.matched_Vch_Type
+                };
+                lenderUid = match.matched_uid;
+                // Determine role based on Debit/Credit
+                lenderRole = (parseFloat(match.matched_Debit || 0) > 0) ? 'Lender' : 'Borrower';
+            }
         }
         
-        // Determine the role for each party
-        let steelRole = 'Lender';
-        let geotexRole = 'Borrower';
-
-        if (match.owner === 'Steel') {
-            steelRole = 'Lender';
-            geotexRole = 'Borrower';
-        } else if (match.matched_owner === 'Steel') {
-            steelRole = 'Borrower';
-            geotexRole = 'Lender';
-        }
-
         tableHTML += `
             <tr>
-                <td style="font-size: 11px; color: #666;">${steelUid || ''}</td>
-                <td>${formatDate(steelRecord.Date)}</td>
-                <td style="max-width:100px; white-space:pre-line;">${steelRecord.Particulars || ''}</td>
-                <td style="text-align: right; color: green;">${formatAmount(steelRecord.Credit || 0)}</td>
-                <td style="text-align: right; color: red;">${formatAmount(steelRecord.Debit || 0)}</td>
-                <td>${steelRole}</td>
-                <td style="font-size: 11px; color: #666;">${geotexUid || ''}</td>
-                <td>${formatDate(geotexRecord.Date)}</td>
-                <td style="max-width:100px; white-space:pre-line;">${geotexRecord.Particulars || ''}</td>
-                <td style="text-align: right; color: green;">${formatAmount(geotexRecord.Credit || 0)}</td>
-                <td style="text-align: right; color: red;">${formatAmount(geotexRecord.Debit || 0)}</td>
-                <td>${geotexRole}</td>
-                <td style="text-align: center;">
+                <td data-column="uid" style="font-size: 10px; color: #666;">${lenderUid || ''}</td>
+                <td data-column="date">${formatDate(lenderRecord.Date)}</td>
+                <td data-column="particulars">${lenderRecord.Particulars || ''}</td>
+                <td data-column="credit" style="color: green;">${formatAmount(lenderRecord.Credit || 0)}</td>
+                <td data-column="debit" style="color: red;">${formatAmount(lenderRecord.Debit || 0)}</td>
+                <td data-column="vch_type">${lenderRecord.Vch_Type || ''}</td>
+                <td data-column="role">${lenderRole}</td>
+                <td data-column="uid" style="font-size: 10px; color: #666;">${borrowerUid || ''}</td>
+                <td data-column="date">${formatDate(borrowerRecord.Date)}</td>
+                <td data-column="particulars">${borrowerRecord.Particulars || ''}</td>
+                <td data-column="credit" style="color: green;">${formatAmount(borrowerRecord.Credit || 0)}</td>
+                <td data-column="debit" style="color: red;">${formatAmount(borrowerRecord.Debit || 0)}</td>
+                <td data-column="vch_type">${borrowerRecord.Vch_Type || ''}</td>
+                <td data-column="role">${borrowerRole}</td>
+                <td data-column="match_score">
                     <span class="badge ${match.match_score > 0.7 ? 'bg-success' : match.match_score > 0.5 ? 'bg-warning' : 'bg-danger'}">
                         ${(match.match_score * 100).toFixed(0)}%
                     </span>
                 </td>
-                <td style="font-size: 10px; max-width: 150px; word-wrap: break-word;">
-                    ${match.keywords || match.matched_keywords || ''}
-                </td>
-                <td style="text-align: center;">
+                <td data-column="keywords">${match.keywords || match.matched_keywords || ''}</td>
+                <td data-column="actions">
                     <button class="btn btn-success btn-sm me-1" onclick="acceptMatch('${match.uid}')" title="Accept Match">
                         <i class="bi bi-check-lg"></i>
                     </button>
