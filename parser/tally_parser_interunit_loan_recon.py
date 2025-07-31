@@ -16,28 +16,51 @@ def extract_statement_period(metadata: pd.DataFrame) -> Tuple[Tuple[str, str], s
             return (match.group(1), match.group(2)), cell, i
     return ("", ""), "", None
 
-def extract_lender(metadata: pd.DataFrame) -> Tuple[str, str, int]:
-    unit_pattern = re.compile(r'Unit\s*:?[\s)]*([^)]+)')
+def extract_company_name(metadata: pd.DataFrame) -> Tuple[str, str, int]:
+    """Extract the current company name from the ledger file metadata"""
+    # Try multiple patterns to find the company name
+    patterns = [
+        r'Unit\s*:?[\s)]*([^)]+)',  # Unit: CompanyName
+        r'([A-Za-z\s&.()/-]+)\s+Unit',  # CompanyName Unit
+        r'([A-Za-z\s&.()/-]+)\s+Account',  # CompanyName Account
+        r'([A-Za-z\s&.()/-]+)\s+Ledger',  # CompanyName Ledger
+    ]
+    
     for i, row in metadata.iterrows():
         cell = str(row[0])
-        match = unit_pattern.search(cell)
-        if match:
-            return match.group(1).strip(), cell, i
-    return str(metadata.iloc[0, 0]).strip(), metadata.iloc[0, 0], 0
+        for pattern in patterns:
+            match = re.search(pattern, cell, re.IGNORECASE)
+            if match:
+                company_name = match.group(1).strip()
+                # Clean up common suffixes
+                company_name = re.sub(r'\s*[Uu]nit\.?\s*$', '', company_name).strip()
+                company_name = re.sub(r'\s*[Aa]ccount\.?\s*$', '', company_name).strip()
+                company_name = re.sub(r'\s*[Ll]edger\.?\s*$', '', company_name).strip()
+                # Debug print to see what's being extracted
+                print(f"DEBUG: Extracted company name: '{company_name}' from cell: '{cell}'")
+                return company_name, cell, i
+    
+    # Fallback: use first non-empty cell
+    for i, row in metadata.iterrows():
+        cell = str(row[0]).strip()
+        if cell and cell not in ['', 'None', 'nan']:
+            print(f"DEBUG: Using fallback company name: '{cell}' from cell: '{cell}'")
+            return cell, cell, i
+    
+    return "Unknown Company", "", 0
 
-def extract_borrower(metadata: pd.DataFrame) -> Tuple[str, str, int]:
-    pattern = re.compile(r'A/C-([\w\s&.()/-]+)')
+def extract_counterparty(metadata: pd.DataFrame) -> Tuple[str, str, int]:
+    """Extract the counterparty company name from interunit loan account"""
+    pattern = re.compile(r'Interunit\s+Loan\s+A/C-(\w+)', re.IGNORECASE)
     for i, row in metadata.iterrows():
         cell = str(row[0])
         match = pattern.search(cell)
         if match:
-            borrower = match.group(1).strip()
-            # Remove 'Unit' or 'unit' from the end (with or without period) and clean up
-            borrower = re.sub(r'\s*[Uu]nit\.?\s*$', '', borrower).strip()
-            # Replace 'Geo Textile' with 'GeoTex'
-            if borrower == 'Geo Textile':
-                borrower = 'GeoTex'
-            return borrower, cell, i
+            counterparty = match.group(1).strip()
+            # Handle known company name variations
+            if counterparty == 'Geo':
+                counterparty = 'GeoTex'
+            return counterparty, cell, i
     return "", "", None
 
 def clean(val) -> str:
@@ -80,8 +103,8 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
     metadata = pd.DataFrame(metadata_rows)
 
     (period_start, period_end), _, period_row = extract_statement_period(metadata)
-    lender, _, lender_row = extract_lender(metadata)
-    borrower, _, borrower_row = extract_borrower(metadata)
+    current_company, _, company_row = extract_company_name(metadata)
+    counterparty, _, counterparty_row = extract_counterparty(metadata)
 
     ledger_date = ""
     ledger_year = ""
@@ -167,17 +190,6 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
 
     df['entered_by'] = entered_by_list
 
-    # Add lender and borrower columns (these are the company names from the file)
-    df['lender'] = lender
-    # Extract borrower from metadata/header rows (not transaction rows)
-    borrower = ''
-    for row in metadata[0]: # Iterate through the first column of metadata DataFrame
-        match = re.search(r'Interunit Loan\s+A/C-([\w\s&.()/-]+?)\s+Unit\.?', str(row), re.IGNORECASE)
-        if match:
-            borrower = match.group(1).strip()
-            break
-    df['borrower'] = borrower
-
     # Add role column based on Debit/Credit
     def determine_role(row):
         debit_val = row.get('Debit', 0)
@@ -198,6 +210,29 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
             return None
     
     df['role'] = df.apply(determine_role, axis=1)
+    
+    # Add lender and borrower columns based on role for each transaction
+    def assign_lender_borrower(row):
+        role = row.get('role')
+        if role == 'Lender':
+            # Current company is lending (Debit > 0), so they are the lender
+            return current_company, counterparty
+        elif role == 'Borrower':
+            # Current company is borrowing (Credit > 0), so counterparty is the lender
+            return counterparty, current_company
+        else:
+            return None, None
+    
+    # Apply the function to get lender and borrower for each row
+    lender_borrower_pairs = df.apply(assign_lender_borrower, axis=1)
+    df['lender'] = [pair[0] for pair in lender_borrower_pairs]
+    df['borrower'] = [pair[1] for pair in lender_borrower_pairs]
+    
+    # Debug print to see what's being assigned
+    print(f"DEBUG: Current company: '{current_company}'")
+    print(f"DEBUG: Counterparty: '{counterparty}'")
+    print(f"DEBUG: Sample lender values: {df['lender'].head().tolist()}")
+    print(f"DEBUG: Sample borrower values: {df['borrower'].head().tolist()}")
 
     if "Date" in df.columns:
         df["Date"] = pd.to_datetime(
@@ -227,8 +262,8 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
                 hexbal = to_hex(round(float(str(balance_val).replace(",", ""))))
             except Exception:
                 hexbal = ""
-            # Add owner prefix to make uid unique across files
-            uid = f"{lender}_{hexdate}_{hexbal}_{rownum:06d}"
+            # Add company prefix to make uid unique across files
+            uid = f"{current_company}_{hexdate}_{hexbal}_{rownum:06d}"
             uids.append(uid)
             rownum += 1
         else:
