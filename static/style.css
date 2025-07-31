@@ -562,4 +562,255 @@ h1, h2, h3, h4, h5, h6 {
     background: #fff;
 }
 
-/* Column widths - fixed to prevent expansion */ 
+/* Column widths - fixed to prevent expansion */
+
+/* New Matched Transactions Table Styles */
+.matched-transactions-wrapper {
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.matched-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.matched-header h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.matched-header h4 i {
+    margin-right: 8px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-width: 100%;
+    max-height: 600px;
+    border: 1px solid #e1e6ef;
+    border-radius: 8px;
+}
+
+/* Section headers */
+.lender-section, .borrower-section, .match-section {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-align: center;
+    padding: 12px;
+    border-bottom: 2px solid #dee2e6;
+    position: relative;
+}
+
+.lender-section {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
+    border-right: 2px solid #1976d2;
+}
+
+.borrower-section {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    color: #7b1fa2;
+    border-right: 2px solid #8e24aa;
+}
+
+.match-section {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+    color: #2e7d32;
+}
+
+/* Section separators */
+.lender-section::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #1976d2;
+}
+
+.borrower-section::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #8e24aa;
+}
+
+/* Row styling */
+.match-row {
+    transition: background-color 0.2s ease;
+}
+
+.match-row:hover {
+    background-color: #f8f9fa;
+}
+
+/* Column group separators */
+.match-row td:nth-child(7) {
+    border-right: 2px solid #1976d2;
+}
+
+.match-row td:nth-child(14) {
+    border-right: 2px solid #8e24aa;
+}
+
+.high-confidence {
+    border-left: 4px solid #28a745;
+}
+
+.medium-confidence {
+    border-left: 4px solid #ffc107;
+}
+
+.low-confidence {
+    border-left: 4px solid #dc3545;
+}
+
+/* Cell styling */
+.uid-cell {
+    font-size: 10px;
+    color: #6c757d;
+    font-family: monospace;
+}
+
+.particulars-cell {
+    max-width: 250px;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.3;
+}
+
+.amount-cell {
+    font-weight: 600;
+    text-align: right;
+}
+
+.debit-amount {
+    color: #dc3545;
+}
+
+.credit-amount {
+    color: #28a745;
+}
+
+.matched-amount {
+    color: #495057;
+    font-weight: 700;
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 4px 8px;
+    text-align: center;
+}
+
+/* Role badges */
+.role-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lender-role {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.borrower-role {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* Confidence indicator */
+.confidence-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.confidence-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.confidence-badge.high {
+    background: #d4edda;
+    color: #155724;
+}
+
+.confidence-badge.medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.confidence-badge.low {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.confidence-bar {
+    width: 60px;
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.confidence-fill.high {
+    background: #28a745;
+}
+
+.confidence-fill.medium {
+    background: #ffc107;
+}
+
+.confidence-fill.low {
+    background: #dc3545;
+}
+
+/* Match type badge */
+.match-type-badge {
+    padding: 4px 8px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Action buttons */
+.action-buttons {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+
+.action-buttons .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+} 

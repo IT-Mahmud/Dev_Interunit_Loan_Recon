@@ -363,27 +363,34 @@ function displayMatches(matches) {
     
     let tableHTML = `
         <div class="matched-transactions-wrapper">
-            <h4>Matched Transactions (${matches.length} pairs)</h4>
-            <table class="matched-transactions-table">
+            <div class="matched-header">
+                <h4><i class="bi bi-link-45deg"></i> Matched Transactions (${matches.length} pairs)</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="matched-transactions-table">
                 <thead>
                     <tr>
-                        <th data-column="uid">${lender_name} UID</th>
-                        <th data-column="date">${lender_name} Date</th>
-                        <th data-column="particulars">${lender_name} Particulars</th>
-                        <th data-column="credit">${lender_name} Credit</th>
-                        <th data-column="debit">${lender_name} Debit</th>
-                        <th data-column="vch_type">${lender_name} Vch_Type</th>
-                        <th data-column="role">${lender_name} Role</th>
-                        <th data-column="uid">${borrower_name} UID</th>
-                        <th data-column="date">${borrower_name} Date</th>
-                        <th data-column="particulars">${borrower_name} Particulars</th>
-                        <th data-column="credit">${borrower_name} Credit</th>
-                        <th data-column="debit">${borrower_name} Debit</th>
-                        <th data-column="vch_type">${borrower_name} Vch_Type</th>
-                        <th data-column="role">${borrower_name} Role</th>
-                        <th data-column="match_score">Match Score</th>
-                        <th data-column="keywords">Keywords</th>
-                        <th data-column="actions">Accept/Reject</th>
+                            <!-- Lender Columns -->
+                            <th data-column="lender_uid">Lender UID</th>
+                            <th data-column="lender_date">Lender Date</th>
+                            <th data-column="lender_particulars">Lender Particulars</th>
+                            <th data-column="lender_debit">Lender Debit</th>
+                            <th data-column="lender_credit">Lender Credit</th>
+                            <th data-column="lender_vch_type">Lender Vch Type</th>
+                            <th data-column="lender_role">Lender Role</th>
+                            <!-- Borrower Columns -->
+                            <th data-column="borrower_uid">Borrower UID</th>
+                            <th data-column="borrower_date">Borrower Date</th>
+                            <th data-column="borrower_particulars">Borrower Particulars</th>
+                            <th data-column="borrower_debit">Borrower Debit</th>
+                            <th data-column="borrower_credit">Borrower Credit</th>
+                            <th data-column="borrower_vch_type">Borrower Vch Type</th>
+                            <th data-column="borrower_role">Borrower Role</th>
+                            <!-- Match Details Columns -->
+                            <th data-column="confidence">Confidence</th>
+                            <th data-column="match_type">Match Type</th>
+                            <th data-column="amount">Amount</th>
+                            <th data-column="actions">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -490,35 +497,58 @@ function displayMatches(matches) {
             }
         }
         
+        // Calculate the matched amount
+        const matchedAmount = Math.max(
+            parseFloat(lenderRecord.Debit || 0),
+            parseFloat(lenderRecord.Credit || 0),
+            parseFloat(borrowerRecord.Debit || 0),
+            parseFloat(borrowerRecord.Credit || 0)
+        );
+        
         tableHTML += `
-            <tr>
-                <td data-column="uid" style="font-size: 10px; color: #666;">${lenderUid || ''}</td>
-                <td data-column="date">${formatDate(lenderRecord.Date)}</td>
-                <td data-column="particulars">${lenderRecord.Particulars || ''}</td>
-                <td data-column="credit" style="color: green;">${formatAmount(lenderRecord.Credit || 0)}</td>
-                <td data-column="debit" style="color: red;">${formatAmount(lenderRecord.Debit || 0)}</td>
-                <td data-column="vch_type">${lenderRecord.Vch_Type || ''}</td>
-                <td data-column="role">${lenderRole}</td>
-                <td data-column="uid" style="font-size: 10px; color: #666;">${borrowerUid || ''}</td>
-                <td data-column="date">${formatDate(borrowerRecord.Date)}</td>
-                <td data-column="particulars">${borrowerRecord.Particulars || ''}</td>
-                <td data-column="credit" style="color: green;">${formatAmount(borrowerRecord.Credit || 0)}</td>
-                <td data-column="debit" style="color: red;">${formatAmount(borrowerRecord.Debit || 0)}</td>
-                <td data-column="vch_type">${borrowerRecord.Vch_Type || ''}</td>
-                <td data-column="role">${borrowerRole}</td>
-                <td data-column="match_score">
-                    <span class="badge ${match.match_score > 0.7 ? 'bg-success' : match.match_score > 0.5 ? 'bg-warning' : 'bg-danger'}">
+            <tr class="match-row ${match.match_score > 0.7 ? 'high-confidence' : match.match_score > 0.5 ? 'medium-confidence' : 'low-confidence'}">
+                <!-- Lender Columns -->
+                <td data-column="lender_uid" class="uid-cell">${lenderUid || ''}</td>
+                <td data-column="lender_date">${formatDate(lenderRecord.Date)}</td>
+                <td data-column="lender_particulars" class="particulars-cell">${lenderRecord.Particulars || ''}</td>
+                <td data-column="lender_debit" class="amount-cell debit-amount">${formatAmount(lenderRecord.Debit || 0)}</td>
+                <td data-column="lender_credit" class="amount-cell credit-amount">${formatAmount(lenderRecord.Credit || 0)}</td>
+                <td data-column="lender_vch_type">${lenderRecord.Vch_Type || ''}</td>
+                <td data-column="lender_role"><span class="role-badge lender-role">${lenderRole}</span></td>
+                <!-- Borrower Columns -->
+                <td data-column="borrower_uid" class="uid-cell">${borrowerUid || ''}</td>
+                <td data-column="borrower_date">${formatDate(borrowerRecord.Date)}</td>
+                <td data-column="borrower_particulars" class="particulars-cell">${borrowerRecord.Particulars || ''}</td>
+                <td data-column="borrower_debit" class="amount-cell debit-amount">${formatAmount(borrowerRecord.Debit || 0)}</td>
+                <td data-column="borrower_credit" class="amount-cell credit-amount">${formatAmount(borrowerRecord.Credit || 0)}</td>
+                <td data-column="borrower_vch_type">${borrowerRecord.Vch_Type || ''}</td>
+                <td data-column="borrower_role"><span class="role-badge borrower-role">${borrowerRole}</span></td>
+                <!-- Match Details Columns -->
+                <td data-column="confidence">
+                    <div class="confidence-indicator">
+                        <span class="confidence-badge ${match.match_score > 0.7 ? 'high' : match.match_score > 0.5 ? 'medium' : 'low'}">
                         ${(match.match_score * 100).toFixed(0)}%
                     </span>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill ${match.match_score > 0.7 ? 'high' : match.match_score > 0.5 ? 'medium' : 'low'}" style="width: ${match.match_score * 100}%"></div>
+                        </div>
+                    </div>
                 </td>
-                <td data-column="keywords">${match.keywords || match.matched_keywords || ''}</td>
+                <td data-column="match_type">
+                    <span class="match-type-badge">${match.keywords || match.matched_keywords || 'Auto'}</span>
+                </td>
+                <td data-column="amount" class="amount-cell matched-amount">
+                    <strong>${formatAmount(matchedAmount)}</strong>
+                </td>
                 <td data-column="actions">
-                    <button class="btn btn-success btn-sm me-1" onclick="acceptMatch('${match.uid}')" title="Accept Match">
+                    <div class="action-buttons">
+                        <button class="btn btn-success btn-sm" onclick="acceptMatch('${match.uid}')" title="Accept Match">
                         <i class="bi bi-check-lg"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="rejectMatch('${match.uid}')" title="Reject Match">
+                        <button class="btn btn-danger btn-sm" onclick="rejectMatch('${match.uid}')" title="Reject Match">
                         <i class="bi bi-x-lg"></i>
                     </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -527,6 +557,7 @@ function displayMatches(matches) {
     tableHTML += `
                 </tbody>
             </table>
+            </div>
         </div>
     `;
     
