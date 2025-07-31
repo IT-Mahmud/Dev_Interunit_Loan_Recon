@@ -51,7 +51,7 @@ def extract_company_name(metadata: pd.DataFrame) -> Tuple[str, str, int]:
 
 def extract_counterparty(metadata: pd.DataFrame) -> Tuple[str, str, int]:
     """Extract the counterparty company name from interunit loan account"""
-    pattern = re.compile(r'Interunit\s+Loan\s+A/C-(\w+)', re.IGNORECASE)
+    pattern = re.compile(r'Inter\s*Unit\s+Loan\s+A/C-(\w+)', re.IGNORECASE)
     for i, row in metadata.iterrows():
         cell = str(row[0])
         match = pattern.search(cell)
