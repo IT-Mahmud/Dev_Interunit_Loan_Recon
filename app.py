@@ -5,7 +5,8 @@ from werkzeug.utils import secure_filename
 from parser.tally_parser_interunit_loan_recon import parse_tally_file
 import database
 import threading
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 app = Flask(__name__)
 
@@ -363,28 +364,43 @@ def download_matches():
                     lender_role = 'Lender' if lender_debit and float(lender_debit) > 0 else 'Borrower'
                     borrower_role = 'Borrower' if borrower_credit and float(borrower_credit) > 0 else 'Lender'
 
-                # Add Lender Role and Borrower Role columns
-                export_rows.append({
-                    # Lender section
-                    f'{lender_name} UID': lender_uid,
-                    f'{lender_name} Date': lender_date,
-                    f'{lender_name} Particulars': lender_particulars,
-                    f'{lender_name} Credit': lender_credit,
-                    f'{lender_name} Debit': lender_debit,
-                    f'{lender_name} Vch_Type': lender_vch_type,
-                    f'{lender_name} Role': lender_role,
-                    # Borrower section
-                    f'{borrower_name} UID': borrower_uid,
-                    f'{borrower_name} Date': borrower_date,
-                    f'{borrower_name} Particulars': borrower_particulars,
-                    f'{borrower_name} Credit': borrower_credit,
-                    f'{borrower_name} Debit': borrower_debit,
-                    f'{borrower_name} Vch_Type': borrower_vch_type,
-                    f'{borrower_name} Role': borrower_role,
-                    # Match info
-                    'Match Score': row.get('match_score'),
-                    'Keywords': row.get('keywords')
-                })
+                # Calculate matched amount
+                matched_amount = max(
+                    float(lender_debit or 0),
+                    float(lender_credit or 0),
+                    float(borrower_debit or 0),
+                    float(borrower_credit or 0)
+                )
+                
+                # Create row with proper column structure matching HTML table
+                # The HTML table has 18 columns: 7 lender + 7 borrower + 4 match details
+                row_data = {}
+                
+                # Lender section (columns 1-7) - match HTML table exactly
+                row_data['Lender UID'] = lender_uid
+                row_data['Lender Date'] = lender_date
+                row_data['Lender Particulars'] = lender_particulars
+                row_data['Lender Debit'] = lender_debit
+                row_data['Lender Credit'] = lender_credit
+                row_data['Lender Vch Type'] = lender_vch_type
+                row_data['Lender Role'] = lender_role
+                
+                # Borrower section (columns 8-14) - match HTML table exactly
+                row_data['Borrower UID'] = borrower_uid
+                row_data['Borrower Date'] = borrower_date
+                row_data['Borrower Particulars'] = borrower_particulars
+                row_data['Borrower Debit'] = borrower_debit
+                row_data['Borrower Credit'] = borrower_credit
+                row_data['Borrower Vch Type'] = borrower_vch_type
+                row_data['Borrower Role'] = borrower_role
+                
+                # Match details section (columns 15-18) - match HTML table exactly
+                row_data['Confidence'] = f"{float(row.get('match_score', 0) * 100):.0f}%" if row.get('match_score') else 'N/A'
+                row_data['Match Type'] = row.get('keywords') or 'Auto'
+                row_data['Amount'] = matched_amount
+                row_data['Actions'] = 'Pending'
+                
+                export_rows.append(row_data)
             
             export_df = pd.DataFrame(export_rows)
             export_filename = f"matched_transactions_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
@@ -392,29 +408,78 @@ def download_matches():
             
             # Export with openpyxl for formatting
             with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
-                export_df.to_excel(writer, index=False, sheet_name='Matched Transactions')
+                # Create a new DataFrame with section headers
+                section_headers = []
                 
-                # Get the worksheet for formatting
+                # Add section header row
+                section_row = []
+                section_row.extend(['LENDER (Debit > 0)'] * 7)  # 7 lender columns
+                section_row.extend(['BORROWER (Credit > 0)'] * 7)  # 7 borrower columns  
+                section_row.extend(['MATCH DETAILS'] * 4)  # 4 match detail columns
+                section_headers.append(section_row)
+                
+                # Add column headers
+                section_headers.append(export_df.columns.tolist())
+                
+                # Create header DataFrame
+                header_df = pd.DataFrame(section_headers)
+                
+                # Combine headers with data
+                final_df = pd.concat([header_df, export_df], ignore_index=True)
+                final_df.to_excel(writer, index=False, sheet_name='Matched Transactions')
+                
+                # Get the worksheet for basic formatting
                 worksheet = writer.sheets['Matched Transactions']
                 
-                # Find columns with 'Particulars' in the header
-                particulars_cols = [i+1 for i, col in enumerate(export_df.columns) if 'Particulars' in col]
-
-                for col_idx in range(1, len(export_df.columns)+1):
-                    col_letter = worksheet.cell(row=1, column=col_idx).column_letter
-                    if col_idx in particulars_cols:
-                        worksheet.column_dimensions[col_letter].width = 100
-                        for cell in worksheet[col_letter]:
-                            cell.alignment = Alignment(wrap_text=True)
+                # Set basic column widths
+                for col_idx in range(1, len(export_df.columns) + 1):
+                    col_letter = get_column_letter(col_idx)
+                    column_name = export_df.columns[col_idx - 1]
+                    
+                    if 'Particulars' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 50
+                    elif 'UID' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 20
+                    elif 'Date' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 12
+                    elif 'Debit' in column_name or 'Credit' in column_name or 'Amount' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 15
+                    elif 'Confidence' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 12
+                    elif 'Vch Type' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 15
+                    elif 'Role' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 12
+                    elif 'Match Type' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 15
+                    elif 'Actions' in column_name:
+                        worksheet.column_dimensions[col_letter].width = 12
                     else:
-                        max_length = 0
-                        for cell in worksheet[col_letter]:
-                            try:
-                                if cell.value and len(str(cell.value)) > max_length:
-                                    max_length = len(str(cell.value))
-                            except:
-                                pass
-                        worksheet.column_dimensions[col_letter].width = min(max_length + 2, 50)
+                        worksheet.column_dimensions[col_letter].width = 15
+                
+                # Format section headers (row 1)
+                for col_idx in range(1, len(export_df.columns) + 1):
+                    cell = worksheet.cell(row=1, column=col_idx)
+                    cell.font = Font(bold=True, color="FFFFFF", size=12)
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    
+                    # Apply background colors based on section
+                    if col_idx <= 7:  # Lender section
+                        cell.fill = PatternFill(start_color="1976D2", end_color="1976D2", fill_type="solid")
+                    elif col_idx <= 14:  # Borrower section
+                        cell.fill = PatternFill(start_color="7B1FA2", end_color="7B1FA2", fill_type="solid")
+                    else:  # Match details section
+                        cell.fill = PatternFill(start_color="388E3C", end_color="388E3C", fill_type="solid")
+                
+                # Format column headers (row 2)
+                for col_idx in range(1, len(export_df.columns) + 1):
+                    cell = worksheet.cell(row=2, column=col_idx)
+                    cell.font = Font(bold=True, size=11)
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
+                
+                # Freeze panes after headers
+                worksheet.freeze_panes = "A3"
             
             return send_from_directory('uploads', export_filename, as_attachment=True)
     except Exception as e:
