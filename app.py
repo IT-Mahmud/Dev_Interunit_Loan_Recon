@@ -92,7 +92,7 @@ def upload_file():
         record_recent_upload(original_filename)
         
         # Parse file
-        df = parse_tally_file(filepath, sheet_name)
+        df = parse_tally_file(filepath, sheet_name, original_filename)
         
         # Save to database
         success, error_msg = database.save_data(df)
@@ -162,19 +162,41 @@ def export_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/file-pairs', methods=['GET'])
+def get_file_pairs():
+    """Get available file pairs for reconciliation"""
+    try:
+        pairs = database.get_file_pairs()
+        return jsonify({'pairs': pairs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/reconcile', methods=['POST'])
 def reconcile_transactions():
     """Reconcile interunit transactions using new matching logic"""
     try:
-        # Get all unmatched transactions
-        data = database.get_unmatched_data()
+        data = request.get_json() or {}
+        file1 = data.get('file1')
+        file2 = data.get('file2')
+        
+        # Get unmatched transactions (optionally filtered by file pair)
+        if file1 and file2:
+            # Reconcile specific file pair
+            data = database.get_unmatched_data_by_files(file1, file2)
+        else:
+            # Reconcile all data (existing behavior)
+            data = database.get_unmatched_data()
+        
         # Perform matching logic
         matches = database.find_matches(data)
         # Update database with matches
         database.update_matches(matches)
+        
         return jsonify({
             'message': 'Reconciliation complete.',
-            'matches_found': len(matches)
+            'matches_found': len(matches),
+            'file1': file1,
+            'file2': file2
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

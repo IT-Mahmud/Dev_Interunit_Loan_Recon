@@ -22,5 +22,6 @@ CREATE TABLE IF NOT EXISTS tally_data (
     match_score FLOAT,
     date_matched DATETIME,
     keywords TEXT,
-    role VARCHAR(16)
+    role VARCHAR(16),
+    original_filename VARCHAR(255)
 );

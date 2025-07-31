@@ -90,6 +90,34 @@
         <div class="tab-pane" id="pane-reconciliation" style="display:none;">
             <div class="parser-container parser-container-fullwidth">
                 <h2>Interunit Reconciliation</h2>
+                
+                <!-- File Pair Selection -->
+                <div class="mb-4">
+                    <h5>Select File Pair for Reconciliation</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">File 1:</label>
+                            <select id="file1-select" class="form-select">
+                                <option value="">-- Select First File --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">File 2:</label>
+                            <select id="file2-select" class="form-select">
+                                <option value="">-- Select Second File --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadFilePairs()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh File Pairs
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearFileSelection()">
+                            <i class="bi bi-x-circle me-1"></i>Clear Selection
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="mb-3">
                     <button type="button" class="btn btn-primary" onclick="runReconciliation()">
                         <i class="bi bi-arrow-repeat me-2"></i>Run Reconciliation

@@ -45,7 +45,7 @@ def test_excel_download():
     # Step 2: Run reconciliation
     print("\n2️⃣ Running reconciliation...")
     
-    response = requests.post(f"{base_url}/api/reconcile")
+    response = requests.post(f"{base_url}/api/reconcile", json={})
     
     if response.status_code == 200:
         result = response.json()

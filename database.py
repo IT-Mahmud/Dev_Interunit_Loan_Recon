@@ -451,3 +451,91 @@ def get_column_order():
     except Exception as e:
         print(f"Error getting column order: {e}")
         return [] 
+
+def get_file_pairs():
+    """Get available file pairs for reconciliation"""
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        # Get all unique files and their companies
+        result = conn.execute(text("""
+            SELECT DISTINCT 
+                original_filename,
+                lender,
+                borrower,
+                statement_month,
+                statement_year
+            FROM tally_data 
+            WHERE original_filename IS NOT NULL
+            ORDER BY original_filename
+        """))
+        
+        files = []
+        for row in result:
+            files.append({
+                'filename': row.original_filename,
+                'lender': row.lender,
+                'borrower': row.borrower,
+                'month': row.statement_month,
+                'year': row.statement_year
+            })
+        
+        # Group into pairs based on lender/borrower relationships
+        pairs = []
+        processed_files = set()
+        
+        for i, file1 in enumerate(files):
+            if file1['filename'] in processed_files:
+                continue
+                
+            # Look for matching pair
+            for file2 in files[i+1:]:
+                if file2['filename'] in processed_files:
+                    continue
+                    
+                # Check if these files form a pair (same companies, opposite roles)
+                if (file1['lender'] == file2['borrower'] and 
+                    file1['borrower'] == file2['lender'] and
+                    file1['month'] == file2['month'] and
+                    file1['year'] == file2['year']):
+                    
+                    pairs.append({
+                        'lender_file': file1['filename'],
+                        'borrower_file': file2['filename'],
+                        'lender_company': file1['lender'],
+                        'borrower_company': file1['borrower'],
+                        'month': file1['month'],
+                        'year': file1['year']
+                    })
+                    
+                    processed_files.add(file1['filename'])
+                    processed_files.add(file2['filename'])
+                    break
+        
+        return pairs
+
+def get_unmatched_data_by_files(lender_file, borrower_file):
+    """Get unmatched transactions filtered by specific file pair"""
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT * FROM tally_data 
+            WHERE match_status = 'unmatched'
+            AND original_filename IN (:lender_file, :borrower_file)
+            ORDER BY Date
+        """), {
+            'lender_file': lender_file,
+            'borrower_file': borrower_file
+        })
+        
+        records = []
+        for row in result:
+            record = dict(row._mapping)
+            records.append(record)
+        
+        return records 

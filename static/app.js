@@ -25,6 +25,11 @@ function showTab(tabName) {
         if (tabName === 'data-table') {
             loadData();
         }
+        
+        // If switching to reconciliation tab, load file pairs
+        if (tabName === 'reconciliation') {
+            loadFilePairs();
+        }
     }
 }
 
@@ -240,20 +245,98 @@ function getStatusBadgeClass(status) {
     }
 }
 
-// Reconciliation functions
+// File pair selection functions
+async function loadFilePairs() {
+    try {
+        const response = await fetch('/api/file-pairs');
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayFilePairs(result.pairs);
+        } else {
+            console.error('Failed to load file pairs:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading file pairs:', error);
+    }
+}
+
+function displayFilePairs(pairs) {
+    const file1Select = document.getElementById('file1-select');
+    const file2Select = document.getElementById('file2-select');
+    
+    // Clear existing options
+    file1Select.innerHTML = '<option value="">-- Select First File --</option>';
+    file2Select.innerHTML = '<option value="">-- Select Second File --</option>';
+    
+    if (pairs.length === 0) {
+        // Add option for all data
+        file1Select.innerHTML += '<option value="">-- All Data (No specific pair) --</option>';
+        return;
+    }
+    
+    // Add pairs to file1 select
+    pairs.forEach(pair => {
+        const option = document.createElement('option');
+        option.value = pair.lender_file;
+        option.textContent = `${pair.lender_file} ↔ ${pair.borrower_file} (${pair.lender_company} ↔ ${pair.borrower_company})`;
+        option.dataset.pair = JSON.stringify(pair);
+        file1Select.appendChild(option);
+    });
+    
+    // Add event listener to auto-select file2
+    file1Select.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.dataset.pair) {
+            const pair = JSON.parse(selectedOption.dataset.pair);
+            file2Select.value = pair.borrower_file;
+        } else {
+            file2Select.value = '';
+        }
+    });
+}
+
+function clearFileSelection() {
+    document.getElementById('file1-select').value = '';
+    document.getElementById('file2-select').value = '';
+}
+
+// Update reconciliation function to use file pairs
 async function runReconciliation() {
     const resultDiv = document.getElementById('reconciliation-result');
     resultDiv.innerHTML = '<div style="color: blue;">Running reconciliation...</div>';
     
+    const file1 = document.getElementById('file1-select').value;
+    const file2 = document.getElementById('file2-select').value;
+    
+    let message = 'Running reconciliation';
+    if (file1 && file2) {
+        message += ` for file pair: ${file1} ↔ ${file2}`;
+    } else {
+        message += ' on all data';
+    }
+    resultDiv.innerHTML = `<div style="color: blue;">${message}...</div>`;
+    
     try {
         const response = await fetch('/api/reconcile', {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file1: file1,
+                file2: file2
+            })
         });
         
         const result = await response.json();
         
         if (response.ok) {
-            resultDiv.innerHTML = `<div style="color: green;">${result.message}. ${result.matches_found} matches found.</div>`;
+            let successMessage = `${result.message} ${result.matches_found} matches found.`;
+            if (result.file1 && result.file2) {
+                successMessage += ` (${result.file1} ↔ ${result.file2})`;
+            }
+            resultDiv.innerHTML = `<div style="color: green;">${successMessage}</div>`;
             
             // Auto-load matches after reconciliation
             setTimeout(() => {

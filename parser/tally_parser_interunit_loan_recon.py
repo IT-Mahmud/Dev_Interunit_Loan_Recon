@@ -86,7 +86,7 @@ def deduplicate_row(row, dup_map):
                     found = True
     return res
 
-def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
+def parse_tally_file(file_path: str, sheet_name: str, original_filename: str = None) -> pd.DataFrame:
     wb = load_workbook(file_path, data_only=True)
     ws = wb[sheet_name]
 
@@ -274,8 +274,11 @@ def parse_tally_file(file_path: str, sheet_name: str) -> pd.DataFrame:
     from datetime import datetime
     df['input_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    cols = ["uid", "lender", "borrower", "statement_month", "statement_year", "role"] + \
-        [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year", "role"]]
+    # Add original_filename column
+    df['original_filename'] = original_filename or file_path.split('/')[-1]
+    
+    cols = ["uid", "lender", "borrower", "statement_month", "statement_year", "role", "original_filename"] + \
+        [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year", "role", "original_filename"]]
 
     df["statement_month"] = ledger_date
     df["statement_year"] = ledger_year
