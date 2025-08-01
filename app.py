@@ -162,11 +162,11 @@ def export_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/file-pairs', methods=['GET'])
-def get_file_pairs():
-    """Get available file pairs for reconciliation"""
+@app.route('/api/company-pairs', methods=['GET'])
+def get_company_pairs():
+    """Get available company pairs for reconciliation"""
     try:
-        pairs = database.get_file_pairs()
+        pairs = database.get_company_pairs()
         return jsonify({'pairs': pairs})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -176,13 +176,15 @@ def reconcile_transactions():
     """Reconcile interunit transactions using new matching logic"""
     try:
         data = request.get_json() or {}
-        file1 = data.get('file1')
-        file2 = data.get('file2')
+        lender_company = data.get('lender_company')
+        borrower_company = data.get('borrower_company')
+        month = data.get('month')
+        year = data.get('year')
         
-        # Get unmatched transactions (optionally filtered by file pair)
-        if file1 and file2:
-            # Reconcile specific file pair
-            data = database.get_unmatched_data_by_files(file1, file2)
+        # Get unmatched transactions (optionally filtered by company pair)
+        if lender_company and borrower_company:
+            # Reconcile specific company pair
+            data = database.get_unmatched_data_by_companies(lender_company, borrower_company, month, year)
         else:
             # Reconcile all data (existing behavior)
             data = database.get_unmatched_data()
@@ -195,8 +197,10 @@ def reconcile_transactions():
         return jsonify({
             'message': 'Reconciliation complete.',
             'matches_found': len(matches),
-            'file1': file1,
-            'file2': file2
+            'lender_company': lender_company,
+            'borrower_company': borrower_company,
+            'month': month,
+            'year': year
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

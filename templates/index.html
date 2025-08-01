@@ -91,28 +91,28 @@
             <div class="parser-container parser-container-fullwidth">
                 <h2>Interunit Reconciliation</h2>
                 
-                <!-- File Pair Selection -->
+                <!-- Company Pair Selection -->
                 <div class="mb-4">
-                    <h5>Select File Pair for Reconciliation</h5>
+                    <h5>Select Company Pair for Reconciliation</h5>
                     <div class="row">
                         <div class="col-md-6">
-                            <label class="form-label">File 1:</label>
-                            <select id="file1-select" class="form-select">
-                                <option value="">-- Select First File --</option>
+                            <label class="form-label">Company Pair:</label>
+                            <select id="company-pair-select" class="form-select">
+                                <option value="">-- Select Company Pair --</option>
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">File 2:</label>
-                            <select id="file2-select" class="form-select">
-                                <option value="">-- Select Second File --</option>
+                            <label class="form-label">Statement Period:</label>
+                            <select id="period-select" class="form-select">
+                                <option value="">-- All Periods --</option>
                             </select>
                         </div>
                     </div>
                     <div class="mt-2">
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadFilePairs()">
-                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh File Pairs
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadCompanyPairs()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh Company Pairs
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearFileSelection()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearCompanySelection()">
                             <i class="bi bi-x-circle me-1"></i>Clear Selection
                         </button>
                     </div>

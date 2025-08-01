@@ -26,9 +26,9 @@ function showTab(tabName) {
             loadData();
         }
         
-        // If switching to reconciliation tab, load file pairs
+        // If switching to reconciliation tab, load company pairs
         if (tabName === 'reconciliation') {
-            loadFilePairs();
+            loadCompanyPairs();
         }
     }
 }
@@ -245,73 +245,90 @@ function getStatusBadgeClass(status) {
     }
 }
 
-// File pair selection functions
-async function loadFilePairs() {
+// Company pair selection functions
+async function loadCompanyPairs() {
     try {
-        const response = await fetch('/api/file-pairs');
+        const response = await fetch('/api/company-pairs');
         const result = await response.json();
         
         if (response.ok) {
-            displayFilePairs(result.pairs);
+            displayCompanyPairs(result.pairs);
         } else {
-            console.error('Failed to load file pairs:', result.error);
+            console.error('Failed to load company pairs:', result.error);
         }
     } catch (error) {
-        console.error('Error loading file pairs:', error);
+        console.error('Error loading company pairs:', error);
     }
 }
 
-function displayFilePairs(pairs) {
-    const file1Select = document.getElementById('file1-select');
-    const file2Select = document.getElementById('file2-select');
+function displayCompanyPairs(pairs) {
+    const companyPairSelect = document.getElementById('company-pair-select');
+    const periodSelect = document.getElementById('period-select');
     
     // Clear existing options
-    file1Select.innerHTML = '<option value="">-- Select First File --</option>';
-    file2Select.innerHTML = '<option value="">-- Select Second File --</option>';
+    companyPairSelect.innerHTML = '<option value="">-- Select Company Pair --</option>';
+    periodSelect.innerHTML = '<option value="">-- All Periods --</option>';
     
     if (pairs.length === 0) {
         // Add option for all data
-        file1Select.innerHTML += '<option value="">-- All Data (No specific pair) --</option>';
+        companyPairSelect.innerHTML += '<option value="">-- All Data (No specific pair) --</option>';
         return;
     }
     
-    // Add pairs to file1 select
+    // Add company pairs
     pairs.forEach(pair => {
         const option = document.createElement('option');
-        option.value = pair.lender_file;
-        option.textContent = `${pair.lender_file} ↔ ${pair.borrower_file} (${pair.lender_company} ↔ ${pair.borrower_company})`;
+        option.value = `${pair.lender_company}|${pair.borrower_company}`;
+        option.textContent = pair.description;
         option.dataset.pair = JSON.stringify(pair);
-        file1Select.appendChild(option);
+        companyPairSelect.appendChild(option);
     });
     
-    // Add event listener to auto-select file2
-    file1Select.addEventListener('change', function() {
+    // Add event listener to populate periods
+    companyPairSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption.dataset.pair) {
             const pair = JSON.parse(selectedOption.dataset.pair);
-            file2Select.value = pair.borrower_file;
+            // For now, just show the specific period
+            periodSelect.innerHTML = `<option value="${pair.month}|${pair.year}">${pair.month} ${pair.year}</option>`;
         } else {
-            file2Select.value = '';
+            periodSelect.innerHTML = '<option value="">-- All Periods --</option>';
         }
     });
 }
 
-function clearFileSelection() {
-    document.getElementById('file1-select').value = '';
-    document.getElementById('file2-select').value = '';
+function clearCompanySelection() {
+    document.getElementById('company-pair-select').value = '';
+    document.getElementById('period-select').value = '';
 }
 
-// Update reconciliation function to use file pairs
+// Update reconciliation function to use company pairs
 async function runReconciliation() {
     const resultDiv = document.getElementById('reconciliation-result');
     resultDiv.innerHTML = '<div style="color: blue;">Running reconciliation...</div>';
     
-    const file1 = document.getElementById('file1-select').value;
-    const file2 = document.getElementById('file2-select').value;
+    const companyPairValue = document.getElementById('company-pair-select').value;
+    const periodValue = document.getElementById('period-select').value;
+    
+    let lenderCompany = null;
+    let borrowerCompany = null;
+    let month = null;
+    let year = null;
+    
+    if (companyPairValue) {
+        [lenderCompany, borrowerCompany] = companyPairValue.split('|');
+    }
+    
+    if (periodValue) {
+        [month, year] = periodValue.split('|');
+    }
     
     let message = 'Running reconciliation';
-    if (file1 && file2) {
-        message += ` for file pair: ${file1} ↔ ${file2}`;
+    if (lenderCompany && borrowerCompany) {
+        message += ` for ${lenderCompany} ↔ ${borrowerCompany}`;
+        if (month && year) {
+            message += ` (${month} ${year})`;
+        }
     } else {
         message += ' on all data';
     }
@@ -324,8 +341,10 @@ async function runReconciliation() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file1: file1,
-                file2: file2
+                lender_company: lenderCompany,
+                borrower_company: borrowerCompany,
+                month: month,
+                year: year
             })
         });
         
@@ -333,8 +352,11 @@ async function runReconciliation() {
         
         if (response.ok) {
             let successMessage = `${result.message} ${result.matches_found} matches found.`;
-            if (result.file1 && result.file2) {
-                successMessage += ` (${result.file1} ↔ ${result.file2})`;
+            if (result.lender_company && result.borrower_company) {
+                successMessage += ` (${result.lender_company} ↔ ${result.borrower_company})`;
+                if (result.month && result.year) {
+                    successMessage += ` (${result.month} ${result.year})`;
+                }
             }
             resultDiv.innerHTML = `<div style="color: green;">${successMessage}</div>`;
             

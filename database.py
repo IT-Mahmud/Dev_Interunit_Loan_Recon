@@ -452,86 +452,71 @@ def get_column_order():
         print(f"Error getting column order: {e}")
         return [] 
 
-def get_file_pairs():
-    """Get available file pairs for reconciliation"""
+def get_company_pairs():
+    """Get available company pairs for reconciliation based on company names and statement periods"""
     engine = create_engine(
         f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
     )
     
     with engine.connect() as conn:
-        # Get all unique files and their companies
+        # Get all unique company combinations with their statement periods
         result = conn.execute(text("""
             SELECT DISTINCT 
-                original_filename,
                 lender,
                 borrower,
                 statement_month,
-                statement_year
+                statement_year,
+                COUNT(*) as transaction_count
             FROM tally_data 
-            WHERE original_filename IS NOT NULL
-            ORDER BY original_filename
+            WHERE lender IS NOT NULL AND borrower IS NOT NULL
+            AND lender != borrower
+            GROUP BY lender, borrower, statement_month, statement_year
+            HAVING transaction_count >= 2
+            ORDER BY statement_year DESC, statement_month DESC, lender, borrower
         """))
         
-        files = []
-        for row in result:
-            files.append({
-                'filename': row.original_filename,
-                'lender': row.lender,
-                'borrower': row.borrower,
-                'month': row.statement_month,
-                'year': row.statement_year
-            })
-        
-        # Group into pairs based on lender/borrower relationships
         pairs = []
-        processed_files = set()
-        
-        for i, file1 in enumerate(files):
-            if file1['filename'] in processed_files:
-                continue
-                
-            # Look for matching pair
-            for file2 in files[i+1:]:
-                if file2['filename'] in processed_files:
-                    continue
-                    
-                # Check if these files form a pair (same companies, opposite roles)
-                if (file1['lender'] == file2['borrower'] and 
-                    file1['borrower'] == file2['lender'] and
-                    file1['month'] == file2['month'] and
-                    file1['year'] == file2['year']):
-                    
-                    pairs.append({
-                        'lender_file': file1['filename'],
-                        'borrower_file': file2['filename'],
-                        'lender_company': file1['lender'],
-                        'borrower_company': file1['borrower'],
-                        'month': file1['month'],
-                        'year': file1['year']
-                    })
-                    
-                    processed_files.add(file1['filename'])
-                    processed_files.add(file2['filename'])
-                    break
+        for row in result:
+            pairs.append({
+                'lender_company': row.lender,
+                'borrower_company': row.borrower,
+                'month': row.statement_month,
+                'year': row.statement_year,
+                'transaction_count': row.transaction_count,
+                'description': f"{row.lender} ↔ {row.borrower} ({row.statement_month} {row.statement_year})"
+            })
         
         return pairs
 
-def get_unmatched_data_by_files(lender_file, borrower_file):
-    """Get unmatched transactions filtered by specific file pair"""
+def get_unmatched_data_by_companies(lender_company, borrower_company, month=None, year=None):
+    """Get unmatched transactions filtered by company names and optionally by statement period"""
     engine = create_engine(
         f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
     )
     
     with engine.connect() as conn:
-        result = conn.execute(text("""
+        # Build query based on provided parameters
+        query = """
             SELECT * FROM tally_data 
             WHERE match_status = 'unmatched'
-            AND original_filename IN (:lender_file, :borrower_file)
-            ORDER BY Date
-        """), {
-            'lender_file': lender_file,
-            'borrower_file': borrower_file
-        })
+            AND lender = :lender_company AND borrower = :borrower_company
+        """
+        params = {
+            'lender_company': lender_company,
+            'borrower_company': borrower_company
+        }
+        
+        if month:
+            query += " AND statement_month = :month"
+            params['month'] = month
+        
+        if year:
+            query += " AND statement_year = :year"
+            params['year'] = year
+        
+        query += " ORDER BY Date"
+        
+        result = conn.execute(text(query), params)
         
         records = []
         for row in result:
