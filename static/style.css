@@ -813,4 +813,78 @@ h1, h2, h3, h4, h5, h6 {
 .action-buttons .btn {
     padding: 4px 8px;
     font-size: 12px;
+}
+
+/* Unmatched Transactions Table Styles */
+.unmatched-transactions-wrapper {
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.unmatched-header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.unmatched-header h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.unmatched-header h4 i {
+    margin-right: 8px;
+}
+
+.unmatched-transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: 'Ubuntu', 'Segoe UI', sans-serif;
+    background: #fff;
+}
+
+.unmatched-transactions-table th, 
+.unmatched-transactions-table td {
+    border: 1px solid #e1e6ef;
+    font-size: 11px;
+    font-family: 'Ubuntu', 'Segoe UI', sans-serif;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.unmatched-transactions-table th {
+    background: #f8f9fa;
+    color: #374767;
+    font-weight: 700;
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.unmatched-row {
+    transition: background-color 0.2s ease;
+}
+
+.unmatched-row:hover {
+    background-color: #f8f9fa;
+}
+
+.source-file-cell {
+    font-size: 10px;
+    color: #6c757d;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 } 

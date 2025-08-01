@@ -460,30 +460,31 @@ def get_company_pairs():
     
     with engine.connect() as conn:
         # Get all unique company combinations with their statement periods
+        # Use LEAST and GREATEST to ensure consistent ordering and avoid duplicates
         result = conn.execute(text("""
             SELECT DISTINCT 
-                lender,
-                borrower,
+                LEAST(lender, borrower) as company1,
+                GREATEST(lender, borrower) as company2,
                 statement_month,
                 statement_year,
                 COUNT(*) as transaction_count
             FROM tally_data 
             WHERE lender IS NOT NULL AND borrower IS NOT NULL
             AND lender != borrower
-            GROUP BY lender, borrower, statement_month, statement_year
+            GROUP BY LEAST(lender, borrower), GREATEST(lender, borrower), statement_month, statement_year
             HAVING transaction_count >= 2
-            ORDER BY statement_year DESC, statement_month DESC, lender, borrower
+            ORDER BY statement_year DESC, statement_month DESC, company1, company2
         """))
         
         pairs = []
         for row in result:
             pairs.append({
-                'lender_company': row.lender,
-                'borrower_company': row.borrower,
+                'lender_company': row.company1,
+                'borrower_company': row.company2,
                 'month': row.statement_month,
                 'year': row.statement_year,
                 'transaction_count': row.transaction_count,
-                'description': f"{row.lender} ↔ {row.borrower} ({row.statement_month} {row.statement_year})"
+                'description': f"{row.company1} ↔ {row.company2} ({row.statement_month} {row.statement_year})"
             })
         
         return pairs

@@ -8,7 +8,6 @@ from typing import Tuple, Optional
 import datetime
 
 def extract_statement_period(metadata: pd.DataFrame) -> Tuple[Tuple[str, str], str, Optional[int]]:
-    # Updated pattern to handle both formats: "1-Jul-2024" and "01-Jul-2024"
     period_pattern = re.compile(r'(\d{1,2}-[A-Za-z]{3}-\d{4})\s*to\s*(\d{1,2}-[A-Za-z]{3}-\d{4})')
     for i, row in metadata.iterrows():
         cell = str(row[0])
@@ -107,20 +106,18 @@ def parse_tally_file(file_path: str, sheet_name: str, original_filename: str = N
     current_company, _, company_row = extract_company_name(metadata)
     counterparty, _, counterparty_row = extract_counterparty(metadata)
 
-    ledger_date = ""
-    ledger_year = ""
-    if period_start and period_end:
-        try:
-            first_date = pd.to_datetime(period_start, format="%d-%b-%Y")
-            last_date = pd.to_datetime(period_end, format="%d-%b-%Y")
-            
-            # For financial year periods, use the end date's month and year
-            # Since this appears to be a financial year (Jul 2024 to Jun 2025)
-            ledger_date = month_name[last_date.month]
-            ledger_year = str(last_date.year)
-        except Exception as e:
-            print(f"Error parsing statement period: {e}")
-            print(f"period_start='{period_start}', period_end='{period_end}'")
+    # ledger_date = ""
+    # ledger_year = ""
+    # if period_start and period_end:
+    #     try:
+    #         first_date = pd.to_datetime(period_start, format="%d-%b-%Y")
+    #         last_date = pd.to_datetime(period_end, format="%d-%b-%Y")
+    #         if first_date.month == last_date.month:
+    #             ledger_date = month_name[first_date.month]
+    #         if first_date.year == last_date.year:
+    #             ledger_year = str(first_date.year)
+    #     except Exception:
+    #         pass
 
     for rng in list(ws.merged_cells.ranges):
         val = ws[rng.coord.split(":")[0]].value
@@ -283,8 +280,21 @@ def parse_tally_file(file_path: str, sheet_name: str, original_filename: str = N
     cols = ["uid", "lender", "borrower", "statement_month", "statement_year", "role", "original_filename"] + \
         [c for c in df.columns if c not in ["uid", "lender", "borrower", "statement_month", "statement_year", "role", "original_filename"]]
 
-    df["statement_month"] = ledger_date
-    df["statement_year"] = ledger_year
+    # df["statement_month"] = ledger_date
+    # df["statement_year"] = ledger_year
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+
+    from calendar import month_name
+    df["statement_month"] = df["Date"].dt.month.apply(
+        lambda x: month_name[int(x)] if pd.notnull(x) else ""
+    )
+    df["statement_year"] = df["Date"].dt.year.astype("Int64")
+
+
+    # Validate that all rows have valid statement_month and statement_year
+    if df["statement_month"].eq("").any() or df["statement_year"].isna().any():
+        raise ValueError("Parsing failed: Some rows have missing or invalid Date values, so statement_month or statement_year could not be extracted.")
+
     df = df[cols]
 
     if "Debit" in df.columns:
@@ -308,7 +318,7 @@ if __name__ == "__main__":
     # input_file = "Input_Files/Interunit Steel.xlsx"
     # sheet_name = "Sheet7"
 
-    input_file = "../Input_Files/Interunit GeoTex.xlsx"
+    input_file = "Input_Files/Interunit GeoTex.xlsx"
     sheet_name = "Sheet8"
 
 

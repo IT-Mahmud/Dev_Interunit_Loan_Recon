@@ -50,6 +50,19 @@
                 </div>
             </div>
         </div>
+        <!-- View Results -->
+        <div class="menu-group">
+            <a class="menu-item d-flex align-items-center justify-content-between fw-bold" data-bs-toggle="collapse" href="#resultsMenu" role="button" aria-expanded="false" aria-controls="resultsMenu">
+                <span class="d-flex align-items-center"><i class="bi bi-graph-up me-2"></i> View Results</span>
+                <i class="bi bi-chevron-down ms-2"></i>
+            </a>
+            <div class="collapse" id="resultsMenu">
+                <div class="submenu-list">
+                    <a class="submenu-item" href="#" onclick="showTab('matched-results')">Matched Transactions</a>
+                    <a class="submenu-item" href="#" onclick="showTab('unmatched-results')">Unmatched Transactions</a>
+                </div>
+            </div>
+        </div>
     </nav>
     <div class="flex-grow-1 tab-content-vertical p-4">
         <!-- Tally Upload Tab -->
@@ -130,6 +143,94 @@
                     </button>
                 </div>
                 <div id="reconciliation-result" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <!-- Matched Results Tab -->
+        <div class="tab-pane" id="pane-matched-results" style="display:none;">
+            <div class="parser-container parser-container-fullwidth">
+                <h2>Matched Transactions</h2>
+                
+                <!-- Company Pair Selection -->
+                <div class="mb-4">
+                    <h5>Select Company Pair (Optional)</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Company Pair:</label>
+                            <select id="matched-company-pair-select" class="form-select">
+                                <option value="">-- All Company Pairs --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Statement Period:</label>
+                            <select id="matched-period-select" class="form-select">
+                                <option value="">-- All Periods --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMatchedCompanyPairs()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh Company Pairs
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearMatchedCompanySelection()">
+                            <i class="bi bi-x-circle me-1"></i>Clear Selection
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="button" class="btn btn-primary" onclick="loadMatchedResults()">
+                        <i class="bi bi-eye me-2"></i>View Matched Results
+                    </button>
+                    <button type="button" class="btn btn-success ms-2" onclick="downloadMatchedResults()">
+                        <i class="bi bi-download me-2"></i>Download Matched Results
+                    </button>
+                </div>
+                <div id="matched-results-display" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
+        <!-- Unmatched Results Tab -->
+        <div class="tab-pane" id="pane-unmatched-results" style="display:none;">
+            <div class="parser-container parser-container-fullwidth">
+                <h2>Unmatched Transactions</h2>
+                
+                <!-- Company Pair Selection -->
+                <div class="mb-4">
+                    <h5>Select Company Pair (Optional)</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Company Pair:</label>
+                            <select id="unmatched-company-pair-select" class="form-select">
+                                <option value="">-- All Company Pairs --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Statement Period:</label>
+                            <select id="unmatched-period-select" class="form-select">
+                                <option value="">-- All Periods --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadUnmatchedCompanyPairs()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh Company Pairs
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearUnmatchedCompanySelection()">
+                            <i class="bi bi-x-circle me-1"></i>Clear Selection
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button type="button" class="btn btn-primary" onclick="loadUnmatchedResults()">
+                        <i class="bi bi-eye me-2"></i>View Unmatched Results
+                    </button>
+                    <button type="button" class="btn btn-success ms-2" onclick="downloadUnmatchedResults()">
+                        <i class="bi bi-download me-2"></i>Download Unmatched Results
+                    </button>
+                </div>
+                <div id="unmatched-results-display" style="margin-top:20px;"></div>
             </div>
         </div>
     </div>

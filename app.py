@@ -511,5 +511,131 @@ def download_matches():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/unmatched', methods=['GET'])
+def get_unmatched():
+    """Get unmatched transactions for display"""
+    try:
+        # Get query parameters for filtering
+        lender_company = request.args.get('lender_company')
+        borrower_company = request.args.get('borrower_company')
+        month = request.args.get('month')
+        year = request.args.get('year')
+        
+        if lender_company and borrower_company:
+            # Get unmatched data for specific company pair
+            data = database.get_unmatched_data_by_companies(lender_company, borrower_company, month, year)
+        else:
+            # Get all unmatched data
+            data = database.get_unmatched_data()
+        
+        return jsonify({'unmatched': data})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/download-unmatched', methods=['GET'])
+def download_unmatched():
+    """Download unmatched transactions as Excel"""
+    try:
+        # Get query parameters for filtering
+        lender_company = request.args.get('lender_company')
+        borrower_company = request.args.get('borrower_company')
+        month = request.args.get('month')
+        year = request.args.get('year')
+        
+        if lender_company and borrower_company:
+            # Get unmatched data for specific company pair
+            data = database.get_unmatched_data_by_companies(lender_company, borrower_company, month, year)
+        else:
+            # Get all unmatched data
+            data = database.get_unmatched_data()
+        
+        if not data:
+            return jsonify({'error': 'No unmatched data found'}), 404
+        
+        df = pd.DataFrame(data)
+        
+        # Create a clean export DataFrame with key columns
+        export_columns = [
+            'uid', 'lender', 'borrower', 'statement_month', 'statement_year',
+            'Date', 'Particulars', 'Vch_Type', 'Vch_No', 'Debit', 'Credit',
+            'entered_by', 'input_date', 'role', 'original_filename'
+        ]
+        
+        # Filter to only include columns that exist in the DataFrame
+        available_columns = [col for col in export_columns if col in df.columns]
+        export_df = df[available_columns].copy()
+        
+        # Rename columns for better readability
+        column_mapping = {
+            'uid': 'UID',
+            'lender': 'Lender',
+            'borrower': 'Borrower', 
+            'statement_month': 'Statement Month',
+            'statement_year': 'Statement Year',
+            'Date': 'Date',
+            'Particulars': 'Particulars',
+            'Vch_Type': 'Voucher Type',
+            'Vch_No': 'Voucher No',
+            'Debit': 'Debit Amount',
+            'Credit': 'Credit Amount',
+            'entered_by': 'Entered By',
+            'input_date': 'Input Date',
+            'role': 'Role',
+            'original_filename': 'Source File'
+        }
+        
+        export_df = export_df.rename(columns=column_mapping)
+        
+        # Generate filename
+        if lender_company and borrower_company:
+            filename_suffix = f"{lender_company}_{borrower_company}"
+            if month and year:
+                filename_suffix += f"_{month}_{year}"
+        else:
+            filename_suffix = "all_data"
+        
+        export_filename = f"unmatched_transactions_{filename_suffix}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        export_path = os.path.join('uploads', export_filename)
+        
+        # Export with formatting
+        with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
+            export_df.to_excel(writer, index=False, sheet_name='Unmatched Transactions')
+            
+            # Get the worksheet for formatting
+            worksheet = writer.sheets['Unmatched Transactions']
+            
+            # Set column widths
+            for col_idx, column in enumerate(export_df.columns, 1):
+                col_letter = get_column_letter(col_idx)
+                
+                if 'Particulars' in column:
+                    worksheet.column_dimensions[col_letter].width = 50
+                elif 'UID' in column:
+                    worksheet.column_dimensions[col_letter].width = 25
+                elif 'Date' in column:
+                    worksheet.column_dimensions[col_letter].width = 12
+                elif 'Debit' in column or 'Credit' in column:
+                    worksheet.column_dimensions[col_letter].width = 15
+                elif 'Source File' in column:
+                    worksheet.column_dimensions[col_letter].width = 30
+                else:
+                    worksheet.column_dimensions[col_letter].width = 15
+            
+            # Format header row
+            for col_idx in range(1, len(export_df.columns) + 1):
+                cell = worksheet.cell(row=1, column=col_idx)
+                cell.font = Font(bold=True, size=11)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
+            
+            # Freeze header row
+            worksheet.freeze_panes = "A2"
+        
+        return send_from_directory('uploads', export_filename, as_attachment=True)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000) 
