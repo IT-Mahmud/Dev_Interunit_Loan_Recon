@@ -8,6 +8,7 @@ from typing import Tuple, Optional
 import datetime
 
 def extract_statement_period(metadata: pd.DataFrame) -> Tuple[Tuple[str, str], str, Optional[int]]:
+    # Updated pattern to handle both formats: "1-Jul-2024" and "01-Jul-2024"
     period_pattern = re.compile(r'(\d{1,2}-[A-Za-z]{3}-\d{4})\s*to\s*(\d{1,2}-[A-Za-z]{3}-\d{4})')
     for i, row in metadata.iterrows():
         cell = str(row[0])
@@ -112,12 +113,14 @@ def parse_tally_file(file_path: str, sheet_name: str, original_filename: str = N
         try:
             first_date = pd.to_datetime(period_start, format="%d-%b-%Y")
             last_date = pd.to_datetime(period_end, format="%d-%b-%Y")
-            if first_date.month == last_date.month:
-                ledger_date = month_name[first_date.month]
-            if first_date.year == last_date.year:
-                ledger_year = str(first_date.year)
-        except Exception:
-            pass
+            
+            # For financial year periods, use the end date's month and year
+            # Since this appears to be a financial year (Jul 2024 to Jun 2025)
+            ledger_date = month_name[last_date.month]
+            ledger_year = str(last_date.year)
+        except Exception as e:
+            print(f"Error parsing statement period: {e}")
+            print(f"period_start='{period_start}', period_end='{period_end}'")
 
     for rng in list(ws.merged_cells.ranges):
         val = ws[rng.coord.split(":")[0]].value
@@ -305,7 +308,7 @@ if __name__ == "__main__":
     # input_file = "Input_Files/Interunit Steel.xlsx"
     # sheet_name = "Sheet7"
 
-    input_file = "Input_Files/Interunit GeoTex.xlsx"
+    input_file = "../Input_Files/Interunit GeoTex.xlsx"
     sheet_name = "Sheet8"
 
 

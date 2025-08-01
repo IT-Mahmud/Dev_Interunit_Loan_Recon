@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from werkzeug.utils import secure_filename
 from parser.tally_parser_interunit_loan_recon import parse_tally_file
-import database
+from core import database
 import threading
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter

@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 import pandas as pd
-from config import MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_DB
+from core.config import MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST, MYSQL_DB
 import re
 
 engine = create_engine(
