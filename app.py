@@ -109,6 +109,88 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/upload-pair', methods=['POST'])
+def upload_file_pair():
+    """Upload and process file pair"""
+    try:
+        if 'file1' not in request.files or 'file2' not in request.files:
+            return jsonify({'error': 'Both files are required'}), 400
+        
+        file1 = request.files['file1']
+        file2 = request.files['file2']
+        sheet_name1 = request.form.get('sheet_name1', 'Sheet1')
+        sheet_name2 = request.form.get('sheet_name2', 'Sheet1')
+        
+        if file1.filename == '' or file2.filename == '':
+            return jsonify({'error': 'Both files must be selected'}), 400
+        
+        # Check if same file is uploaded twice
+        if file1.filename == file2.filename:
+            return jsonify({'error': 'Cannot upload the same file for both companies. Please select different files.'}), 400
+        
+        if not allowed_file(file1.filename) or not allowed_file(file2.filename):
+            return jsonify({'error': 'Please upload Excel files only'}), 400
+        
+        # Generate unique pair ID
+        import uuid
+        from datetime import datetime
+        pair_id = f"pair_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        
+        total_rows = 0
+        
+        # Process first file
+        original_filename1 = file1.filename
+        filename1 = secure_filename(file1.filename)
+        filepath1 = os.path.join('uploads', filename1)
+        file1.save(filepath1)
+        
+        # Record recent upload
+        record_recent_upload(original_filename1)
+        
+        # Parse first file
+        df1 = parse_tally_file(filepath1, sheet_name1, original_filename1)
+        # Add pair_id to first file
+        df1['pair_id'] = pair_id
+        total_rows += len(df1)
+        
+        # Save first file to database
+        success1, error_msg1 = database.save_data(df1)
+        if not success1:
+            os.remove(filepath1)
+            return jsonify({'error': error_msg1 or 'Failed to save first file'}), 400
+        os.remove(filepath1)
+        
+        # Process second file
+        original_filename2 = file2.filename
+        filename2 = secure_filename(file2.filename)
+        filepath2 = os.path.join('uploads', filename2)
+        file2.save(filepath2)
+        
+        # Record recent upload
+        record_recent_upload(original_filename2)
+        
+        # Parse second file
+        df2 = parse_tally_file(filepath2, sheet_name2, original_filename2)
+        # Add pair_id to second file
+        df2['pair_id'] = pair_id
+        total_rows += len(df2)
+        
+        # Save second file to database
+        success2, error_msg2 = database.save_data(df2)
+        if not success2:
+            os.remove(filepath2)
+            return jsonify({'error': error_msg2 or 'Failed to save second file'}), 400
+        os.remove(filepath2)
+        
+        return jsonify({
+            'message': 'File pair processed successfully',
+            'rows_processed': total_rows,
+            'pair_id': pair_id
+        })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/data', methods=['GET'])
 def get_data():
     """Get all data"""
@@ -162,32 +244,12 @@ def export_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/company-pairs', methods=['GET'])
-def get_company_pairs():
-    """Get available company pairs for reconciliation"""
-    try:
-        pairs = database.get_company_pairs()
-        return jsonify({'pairs': pairs})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/reconcile', methods=['POST'])
 def reconcile_transactions():
     """Reconcile interunit transactions using new matching logic"""
     try:
-        data = request.get_json() or {}
-        lender_company = data.get('lender_company')
-        borrower_company = data.get('borrower_company')
-        month = data.get('month')
-        year = data.get('year')
-        
-        # Get unmatched transactions (optionally filtered by company pair)
-        if lender_company and borrower_company:
-            # Reconcile specific company pair
-            data = database.get_unmatched_data_by_companies(lender_company, borrower_company, month, year)
-        else:
-            # Reconcile all data (existing behavior)
-            data = database.get_unmatched_data()
+        # Get all unmatched transactions
+        data = database.get_unmatched_data()
         
         # Perform matching logic
         matches = database.find_matches(data)
@@ -196,11 +258,7 @@ def reconcile_transactions():
         
         return jsonify({
             'message': 'Reconciliation complete.',
-            'matches_found': len(matches),
-            'lender_company': lender_company,
-            'borrower_company': borrower_company,
-            'month': month,
-            'year': year
+            'matches_found': len(matches)
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -434,7 +492,7 @@ def download_matches():
             
             # Export with openpyxl for formatting
             with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
-                # Create a new DataFrame with section headers
+                # Creatfe a new DataFrame with section headers
                 section_headers = []
                 
                 # Add section header row
@@ -634,6 +692,71 @@ def download_unmatched():
         
         return send_from_directory('uploads', export_filename, as_attachment=True)
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/detected-pairs', methods=['GET'])
+def get_detected_pairs():
+    """Get automatically detected company pairs"""
+    try:
+        pairs = database.detect_company_pairs()
+        return jsonify({'pairs': pairs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/manual-pairs', methods=['GET'])
+def get_manual_pairs():
+    """Get manually defined company pairs"""
+    try:
+        pairs = database.get_manual_company_pairs()
+        return jsonify({'pairs': pairs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/pairs', methods=['GET'])
+def get_pairs():
+    """Get all available pairs"""
+    try:
+        pairs = database.get_all_pair_ids()
+        return jsonify({'pairs': pairs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/pair/<pair_id>/data', methods=['GET'])
+def get_pair_data(pair_id):
+    """Get all data for a specific pair"""
+    try:
+        data = database.get_data_by_pair_id(pair_id)
+        return jsonify({'data': data, 'pair_id': pair_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/pair/<pair_id>/unmatched', methods=['GET'])
+def get_pair_unmatched_data(pair_id):
+    """Get unmatched data for a specific pair"""
+    try:
+        data = database.get_unmatched_data_by_pair_id(pair_id)
+        return jsonify({'unmatched': data, 'pair_id': pair_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reconcile-pair/<pair_id>', methods=['POST'])
+def reconcile_pair(pair_id):
+    """Reconcile transactions for a specific pair"""
+    try:
+        # Get unmatched transactions for this pair
+        data = database.get_unmatched_data_by_pair_id(pair_id)
+        
+        # Perform matching logic
+        matches = database.find_matches(data)
+        # Update database with matches
+        database.update_matches(matches)
+        
+        return jsonify({
+            'message': f'Reconciliation complete for pair {pair_id}.',
+            'matches_found': len(matches),
+            'pair_id': pair_id
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

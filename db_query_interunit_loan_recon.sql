@@ -3,7 +3,8 @@ USE interunit_loan_recon_db;
 
 CREATE TABLE IF NOT EXISTS tally_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    uid VARCHAR(64),
+    uid VARCHAR(50) NOT NULL UNIQUE,
+    pair_id VARCHAR(64),
     lender VARCHAR(32),
     borrower VARCHAR(32),
     statement_month VARCHAR(16),

@@ -47,6 +47,7 @@
             <div class="collapse" id="viewMenu">
                 <div class="submenu-list">
                     <a class="submenu-item" href="#" onclick="showTab('data-table')">Transaction Data</a>
+                    <a class="submenu-item" href="#" onclick="showTab('pairs-table')">Upload Pairs</a>
                 </div>
             </div>
         </div>
@@ -68,20 +69,44 @@
         <!-- Tally Upload Tab -->
         <div class="tab-pane" id="pane-tally-upload" style="display:block;">
             <div class="parser-container">
-                <h2>Tally Ledger Parser</h2>
+                <h2>Tally Ledger Parser - Upload Pair</h2>
+                <div class="alert alert-info" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Note:</strong> Please select different files for each company. The same file cannot be used for both companies.
+                </div>
                 <form id="tally-upload-form" class="parser-form" enctype="multipart/form-data" autocomplete="off">
-                    <div class="parser-row">
-                        <button type="button" class="parser-label parser-file-btn" onclick="this.nextElementSibling.click()">Select File</button>
-                        <input type="file" name="file" class="parser-input file-input" style="display:none;" accept=".xlsx,.xls" required onchange="handleFileSelect(this)">
-                        <span class="file-chosen" style="margin-left:10px; font-size:14px; color:#222;">No file chosen</span>
+                    <!-- First File Upload -->
+                    <div class="mb-4">
+                        <h5>First Company Ledger</h5>
+                        <div class="parser-row">
+                            <button type="button" class="parser-label parser-file-btn" onclick="this.nextElementSibling.click()">Select File</button>
+                            <input type="file" name="file1" class="parser-input file-input" style="display:none;" accept=".xlsx,.xls" required onchange="handleFileSelect(this, 1)">
+                            <span class="file-chosen" id="file-chosen-1" style="margin-left:10px; font-size:14px; color:#222;">No file chosen</span>
+                        </div>
+                        <div class="parser-row" id="sheet-row-1" style="display:none;">
+                            <label class="parser-label">Select Sheet</label>
+                            <select name="sheet_name1" class="parser-input sheet-select" id="sheet-select-1" required>
+                            </select>
+                        </div>
                     </div>
-                    <div class="parser-row" id="sheet-row" style="display:none;">
-                        <label class="parser-label">Select Sheet</label>
-                        <select name="sheet_name" class="parser-input sheet-select" required>
-                        </select>
+                    
+                    <!-- Second File Upload -->
+                    <div class="mb-4">
+                        <h5>Second Company Ledger</h5>
+                        <div class="parser-row">
+                            <button type="button" class="parser-label parser-file-btn" onclick="this.nextElementSibling.click()">Select File</button>
+                            <input type="file" name="file2" class="parser-input file-input" style="display:none;" accept=".xlsx,.xls" required onchange="handleFileSelect(this, 2)">
+                            <span class="file-chosen" id="file-chosen-2" style="margin-left:10px; font-size:14px; color:#222;">No file chosen</span>
+                        </div>
+                        <div class="parser-row" id="sheet-row-2" style="display:none;">
+                            <label class="parser-label">Select Sheet</label>
+                            <select name="sheet_name2" class="parser-input sheet-select" id="sheet-select-2" required>
+                            </select>
+                        </div>
                     </div>
+                    
                     <div class="parser-row parser-row-parse">
-                        <button type="submit" class="parser-parse-btn" id="parse-btn" disabled>Parse</button>
+                        <button type="submit" class="parser-parse-btn" id="parse-btn" disabled>Upload Pair</button>
                     </div>
                 </form>
                 <div id="upload-msg" style="color: red; margin-top:10px"></div>
@@ -99,36 +124,38 @@
             </div>
         </div>
 
+        <!-- Pairs Table Tab -->
+        <div class="tab-pane" id="pane-pairs-table" style="display:none;">
+            <div class="parser-container parser-container-fullwidth">
+                <h2>Upload Pairs</h2>
+                <div class="mb-3">
+                    <button type="button" class="btn btn-primary" onclick="loadPairs()">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Refresh Pairs
+                    </button>
+                </div>
+                <div id="pairs-table-result" style="margin-top:20px;"></div>
+            </div>
+        </div>
+
         <!-- Reconciliation Tab -->
         <div class="tab-pane" id="pane-reconciliation" style="display:none;">
             <div class="parser-container parser-container-fullwidth">
                 <h2>Interunit Reconciliation</h2>
                 
-                <!-- Company Pair Selection -->
+                <!-- Company Pair Detection -->
                 <div class="mb-4">
-                    <h5>Select Company Pair for Reconciliation</h5>
-                    <div class="row">
+                    <h5>Detected Company Pairs</h5>
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">Company Pair:</label>
-                            <select id="company-pair-select" class="form-select">
-                                <option value="">-- Select Company Pair --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Statement Period:</label>
-                            <select id="period-select" class="form-select">
-                                <option value="">-- All Periods --</option>
-                            </select>
+                            <button type="button" class="btn btn-outline-primary" onclick="loadDetectedPairs()">
+                                <i class="bi bi-search me-1"></i>Smart Scan
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="loadManualPairs()">
+                                <i class="bi bi-gear me-1"></i>Manual Pairs
+                            </button>
                         </div>
                     </div>
-                    <div class="mt-2">
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadCompanyPairs()">
-                            <i class="bi bi-arrow-clockwise me-1"></i>Refresh Company Pairs
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="clearCompanySelection()">
-                            <i class="bi bi-x-circle me-1"></i>Clear Selection
-                        </button>
-                    </div>
+                    <div id="detected-pairs-display" style="margin-top:20px;"></div>
                 </div>
                 
                 <div class="mb-3">

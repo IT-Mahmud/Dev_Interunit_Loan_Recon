@@ -149,12 +149,8 @@ def find_matches(data):
         print("No data to match")
         return []
     
-    print(f"DEBUG: find_matches received {len(data)} records")
-    
     lenders = [r for r in data if r.get('Debit') and r['Debit'] > 0]
     borrowers = [r for r in data if r.get('Credit') and r['Credit'] > 0]
-    
-    print(f"DEBUG: Found {len(lenders)} lenders and {len(borrowers)} borrowers")
     
     matches = []
     for lender in lenders:
@@ -495,6 +491,123 @@ def get_company_pairs():
         
         return pairs
 
+def detect_company_pairs():
+    """Smart scan to detect company pairs based on the pattern in the data"""
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        # Get all unique combinations of current company and counterparty
+        result = conn.execute(text("""
+            SELECT DISTINCT 
+                lender as current_company,
+                borrower as counterparty,
+                statement_month,
+                statement_year,
+                COUNT(*) as transaction_count
+            FROM tally_data 
+            WHERE lender IS NOT NULL AND borrower IS NOT NULL
+            AND lender != borrower
+            GROUP BY lender, borrower, statement_month, statement_year
+            HAVING transaction_count >= 1
+            ORDER BY statement_year DESC, statement_month DESC, lender, borrower
+        """))
+        
+        # Create a mapping of detected pairs
+        detected_pairs = {}
+        
+        for row in result:
+            current_company = row.current_company
+            counterparty = row.counterparty
+            month = row.statement_month
+            year = row.statement_year
+            
+            # Create a unique key for this combination
+            pair_key = f"{current_company}_{counterparty}_{month}_{year}"
+            opposite_key = f"{counterparty}_{current_company}_{month}_{year}"
+            
+            # If we haven't seen this pair or its opposite, add it
+            if pair_key not in detected_pairs and opposite_key not in detected_pairs:
+                detected_pairs[pair_key] = {
+                    'current_company': current_company,
+                    'counterparty': counterparty,
+                    'month': month,
+                    'year': year,
+                    'transaction_count': row.transaction_count,
+                    'description': f"{current_company} ↔ {counterparty} ({month} {year})",
+                    'opposite_pair': {
+                        'current_company': counterparty,
+                        'counterparty': current_company,
+                        'month': month,
+                        'year': year,
+                        'description': f"{counterparty} ↔ {current_company} ({month} {year})"
+                    }
+                }
+        
+        return list(detected_pairs.values())
+
+def get_manual_company_pairs():
+    """Get manually defined company pairs from a configuration"""
+    from core.config import MANUAL_COMPANY_PAIRS
+    
+    # Generate opposite pairs automatically
+    all_pairs = {}
+    for company1, company2 in MANUAL_COMPANY_PAIRS.items():
+        if company1 != company2:
+            # Add the original pair
+            all_pairs[f"{company1}_{company2}"] = (company1, company2)
+            # Add the opposite pair
+            all_pairs[f"{company2}_{company1}"] = (company2, company1)
+    
+    engine = create_engine(
+        f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}/{MYSQL_DB}'
+    )
+    
+    with engine.connect() as conn:
+        pairs = []
+        
+        # Get all unique statement periods
+        result = conn.execute(text("""
+            SELECT DISTINCT statement_month, statement_year
+            FROM tally_data 
+            WHERE statement_month IS NOT NULL AND statement_year IS NOT NULL
+            ORDER BY statement_year DESC, statement_month DESC
+        """))
+        
+        for period_row in result:
+            month = period_row.statement_month
+            year = period_row.statement_year
+            
+            # For each manual pair, check if both companies exist in this period
+            for pair_key, (company1, company2) in all_pairs.items():
+                # Check if both companies have data in this period
+                count_result = conn.execute(text("""
+                    SELECT COUNT(*) as count
+                    FROM tally_data 
+                    WHERE (lender = :company1 OR borrower = :company1 OR lender = :company2 OR borrower = :company2)
+                    AND statement_month = :month AND statement_year = :year
+                """), {
+                    'company1': company1,
+                    'company2': company2,
+                    'month': month,
+                    'year': year
+                })
+                
+                count = count_result.fetchone()[0]
+                if count > 0:
+                    pairs.append({
+                        'lender_company': company1,
+                        'borrower_company': company2,
+                        'month': month,
+                        'year': year,
+                        'transaction_count': count,
+                        'description': f"{company1} ↔ {company2} ({month} {year})",
+                        'type': 'manual'
+                    })
+        
+        return pairs
+
 def get_unmatched_data_by_companies(lender_company, borrower_company, month=None, year=None):
     """Get unmatched transactions filtered by company names and optionally by statement period"""
     engine = create_engine(
@@ -527,9 +640,6 @@ def get_unmatched_data_by_companies(lender_company, borrower_company, month=None
         
         query += " ORDER BY Date"
         
-        print(f"DEBUG: Query: {query}")
-        print(f"DEBUG: Params: {params}")
-        
         result = conn.execute(text(query), params)
         
         records = []
@@ -537,5 +647,91 @@ def get_unmatched_data_by_companies(lender_company, borrower_company, month=None
             record = dict(row._mapping)
             records.append(record)
         
-        print(f"DEBUG: Found {len(records)} records for {lender_company} ↔ {borrower_company}")
         return records 
+
+def get_data_by_pair_id(pair_id):
+    """Get all data for a specific pair ID"""
+    try:
+        ensure_table_exists('tally_data')
+        
+        sql = """
+        SELECT * FROM tally_data 
+        WHERE pair_id = :pair_id
+        ORDER BY Date DESC
+        """
+        
+        df = pd.read_sql(sql, engine, params={'pair_id': pair_id})
+        
+        # Convert to records and handle NaN values
+        records = df.to_dict('records')
+        
+        # Replace any remaining NaN values with None for JSON serialization
+        for record in records:
+            for key, value in record.items():
+                if pd.isna(value):
+                    record[key] = None
+        
+        return records
+    except Exception as e:
+        print(f"Error getting data by pair_id: {e}")
+        return []
+
+def get_all_pair_ids():
+    """Get all unique pair IDs"""
+    try:
+        ensure_table_exists('tally_data')
+        
+        sql = """
+        SELECT DISTINCT pair_id, 
+               COUNT(*) as record_count,
+               MIN(input_date) as upload_date,
+               GROUP_CONCAT(DISTINCT original_filename) as filenames
+        FROM tally_data 
+        WHERE pair_id IS NOT NULL
+        GROUP BY pair_id
+        ORDER BY upload_date DESC
+        """
+        
+        df = pd.read_sql(sql, engine)
+        
+        pairs = []
+        for _, row in df.iterrows():
+            pairs.append({
+                'pair_id': row['pair_id'],
+                'record_count': row['record_count'],
+                'upload_date': row['upload_date'],
+                'filenames': row['filenames'].split(',') if row['filenames'] else []
+            })
+        
+        return pairs
+    except Exception as e:
+        print(f"Error getting pair IDs: {e}")
+        return []
+
+def get_unmatched_data_by_pair_id(pair_id):
+    """Get unmatched transactions for a specific pair ID"""
+    try:
+        ensure_table_exists('tally_data')
+        
+        sql = """
+        SELECT * FROM tally_data 
+        WHERE pair_id = :pair_id
+        AND (match_status = 'unmatched' OR match_status IS NULL)
+        ORDER BY Date DESC
+        """
+        
+        df = pd.read_sql(sql, engine, params={'pair_id': pair_id})
+        
+        # Convert to records and handle NaN values
+        records = df.to_dict('records')
+        
+        # Replace any remaining NaN values with None for JSON serialization
+        for record in records:
+            for key, value in record.items():
+                if pd.isna(value):
+                    record[key] = None
+        
+        return records
+    except Exception as e:
+        print(f"Error getting unmatched data by pair_id: {e}")
+        return [] 

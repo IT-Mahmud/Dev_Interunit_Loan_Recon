@@ -34,10 +34,10 @@ function showTab(tabName) {
 }
 
 // Handle file selection with SheetJS
-function handleFileSelect(input) {
+function handleFileSelect(input, fileNumber) {
     const file = input.files[0];
-    const fileChosenSpan = input.nextElementSibling;
-    const sheetRow = document.getElementById('sheet-row');
+    const fileChosenSpan = document.getElementById(`file-chosen-${fileNumber}`);
+    const sheetRow = document.getElementById(`sheet-row-${fileNumber}`);
     const sheetSelect = sheetRow.querySelector('.sheet-select');
     const parseBtn = document.getElementById('parse-btn');
     
@@ -66,8 +66,8 @@ function handleFileSelect(input) {
                 // Show sheet selection row
                 sheetRow.style.display = 'flex';
                 
-                // Enable parse button
-                parseBtn.disabled = false;
+                // Enable parse button if both files are selected
+                checkBothFilesSelected();
                 
             } catch (error) {
                 console.error('Error reading Excel file:', error);
@@ -83,6 +83,32 @@ function handleFileSelect(input) {
     }
 }
 
+function checkBothFilesSelected() {
+    const file1 = document.querySelector('input[name="file1"]').files[0];
+    const file2 = document.querySelector('input[name="file2"]').files[0];
+    const sheet1 = document.getElementById('sheet-select-1').value;
+    const sheet2 = document.getElementById('sheet-select-2').value;
+    
+    const parseBtn = document.getElementById('parse-btn');
+    const uploadMsg = document.getElementById('upload-msg');
+    
+    // Check if both files are selected
+    if (file1 && file2) {
+        // Check if same file is selected
+        if (file1.name === file2.name) {
+            uploadMsg.textContent = 'Warning: Same file selected for both companies. Please select different files.';
+            uploadMsg.style.color = 'orange';
+            parseBtn.disabled = true;
+            return;
+        } else {
+            uploadMsg.textContent = '';
+            uploadMsg.style.color = 'red';
+        }
+    }
+    
+    parseBtn.disabled = !(file1 && file2 && sheet1 && sheet2);
+}
+
 // Handle form submission
 document.getElementById('tally-upload-form').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -92,33 +118,37 @@ document.getElementById('tally-upload-form').addEventListener('submit', function
 // Upload file function
 async function uploadFile() {
     const formData = new FormData();
-    const fileInput = document.querySelector('input[type="file"]');
-    const sheetSelect = document.querySelector('.sheet-select');
+    const fileInput1 = document.querySelector('input[name="file1"]');
+    const fileInput2 = document.querySelector('input[name="file2"]');
+    const sheetSelect1 = document.getElementById('sheet-select-1');
+    const sheetSelect2 = document.getElementById('sheet-select-2');
     const parseBtn = document.getElementById('parse-btn');
     const uploadMsg = document.getElementById('upload-msg');
     const uploadResult = document.getElementById('upload-result');
     
-    if (!fileInput.files[0]) {
-        uploadMsg.textContent = 'Please select a file to upload.';
+    if (!fileInput1.files[0] || !fileInput2.files[0]) {
+        uploadMsg.textContent = 'Please select both files to upload.';
         return;
     }
     
-    if (!sheetSelect.value) {
-        uploadMsg.textContent = 'Please select a sheet.';
+    if (!sheetSelect1.value || !sheetSelect2.value) {
+        uploadMsg.textContent = 'Please select sheets for both files.';
         return;
     }
     
-    formData.append('file', fileInput.files[0]);
-    formData.append('sheet_name', sheetSelect.value);
+    formData.append('file1', fileInput1.files[0]);
+    formData.append('file2', fileInput2.files[0]);
+    formData.append('sheet_name1', sheetSelect1.value);
+    formData.append('sheet_name2', sheetSelect2.value);
     
     // Show loading
     parseBtn.disabled = true;
     parseBtn.textContent = 'Processing...';
     uploadMsg.textContent = '';
-    uploadResult.innerHTML = '<div style="color: blue;">Uploading file...</div>';
+    uploadResult.innerHTML = '<div style="color: blue;">Uploading file pair...</div>';
     
     try {
-        const response = await fetch('/api/upload', {
+        const response = await fetch('/api/upload-pair', {
             method: 'POST',
             body: formData
         });
@@ -126,22 +156,25 @@ async function uploadFile() {
         const result = await response.json();
         
         if (response.ok) {
-            uploadResult.innerHTML = `<div style="color: green;">File uploaded successfully! ${result.rows_processed} rows processed.</div>`;
+            uploadResult.innerHTML = `<div style="color: green;">File pair uploaded successfully! ${result.rows_processed} rows processed. Pair ID: <code>${result.pair_id}</code></div>`;
             
             // Reset form
-            fileInput.value = '';
-            document.querySelector('.file-chosen').textContent = 'No file chosen';
-            document.getElementById('sheet-row').style.display = 'none';
+            fileInput1.value = '';
+            fileInput2.value = '';
+            document.getElementById('file-chosen-1').textContent = 'No file chosen';
+            document.getElementById('file-chosen-2').textContent = 'No file chosen';
+            document.getElementById('sheet-row-1').style.display = 'none';
+            document.getElementById('sheet-row-2').style.display = 'none';
             parseBtn.disabled = true;
             
             // Reload data
             loadData();
             loadRecentUploads();
             
-            // Clear success message after 5 seconds
+            // Clear success message after 8 seconds (longer to show pair ID)
             setTimeout(() => {
                 uploadResult.innerHTML = '';
-            }, 5000);
+            }, 8000);
             
         } else {
             uploadResult.innerHTML = `<div style="color: red;">Upload failed: ${result.error}</div>`;
@@ -151,7 +184,7 @@ async function uploadFile() {
         uploadResult.innerHTML = `<div style="color: red;">Upload failed: ${error.message}</div>`;
     } finally {
         parseBtn.disabled = false;
-        parseBtn.textContent = 'Parse';
+        parseBtn.textContent = 'Upload Pair';
     }
 }
 
@@ -245,98 +278,10 @@ function getStatusBadgeClass(status) {
     }
 }
 
-// Company pair selection functions
-async function loadCompanyPairs() {
-    try {
-        const response = await fetch('/api/company-pairs');
-        const result = await response.json();
-        
-        if (response.ok) {
-            displayCompanyPairs(result.pairs);
-        } else {
-            console.error('Failed to load company pairs:', result.error);
-        }
-    } catch (error) {
-        console.error('Error loading company pairs:', error);
-    }
-}
-
-function displayCompanyPairs(pairs) {
-    const companyPairSelect = document.getElementById('company-pair-select');
-    const periodSelect = document.getElementById('period-select');
-    
-    // Clear existing options
-    companyPairSelect.innerHTML = '<option value="">-- Select Company Pair --</option>';
-    periodSelect.innerHTML = '<option value="">-- All Periods --</option>';
-    
-    if (pairs.length === 0) {
-        // Add option for all data
-        companyPairSelect.innerHTML += '<option value="">-- All Data (No specific pair) --</option>';
-        return;
-    }
-    
-    // Add company pairs
-    pairs.forEach(pair => {
-        const option = document.createElement('option');
-        option.value = `${pair.lender_company}|${pair.borrower_company}`;
-        option.textContent = pair.description;
-        option.dataset.pair = JSON.stringify(pair);
-        companyPairSelect.appendChild(option);
-    });
-    
-    // Remove existing event listener to prevent duplicates
-    const newCompanyPairSelect = companyPairSelect.cloneNode(true);
-    companyPairSelect.parentNode.replaceChild(newCompanyPairSelect, companyPairSelect);
-    
-    // Add event listener to populate periods
-    newCompanyPairSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        if (selectedOption.dataset.pair) {
-            const pair = JSON.parse(selectedOption.dataset.pair);
-            // For now, just show the specific period
-            periodSelect.innerHTML = `<option value="${pair.month}|${pair.year}">${pair.month} ${pair.year}</option>`;
-        } else {
-            periodSelect.innerHTML = '<option value="">-- All Periods --</option>';
-        }
-    });
-}
-
-function clearCompanySelection() {
-    document.getElementById('company-pair-select').value = '';
-    document.getElementById('period-select').value = '';
-}
-
 // Update reconciliation function to use company pairs
 async function runReconciliation() {
     const resultDiv = document.getElementById('reconciliation-result');
     resultDiv.innerHTML = '<div style="color: blue;">Running reconciliation...</div>';
-    
-    const companyPairValue = document.getElementById('company-pair-select').value;
-    const periodValue = document.getElementById('period-select').value;
-    
-    let lenderCompany = null;
-    let borrowerCompany = null;
-    let month = null;
-    let year = null;
-    
-    if (companyPairValue) {
-        [lenderCompany, borrowerCompany] = companyPairValue.split('|');
-    }
-    
-    if (periodValue) {
-        [month, year] = periodValue.split('|');
-    }
-    
-    let message = 'Running reconciliation';
-    if (lenderCompany && borrowerCompany) {
-        message += ` for ${lenderCompany} ↔ ${borrowerCompany}`;
-        if (month && year) {
-            message += ` (${month} ${year})`;
-        }
-    } else {
-        message += ' on all data';
-    }
-    resultDiv.innerHTML = `<div style="color: blue;">${message}...</div>`;
     
     try {
         const response = await fetch('/api/reconcile', {
@@ -344,24 +289,13 @@ async function runReconciliation() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                lender_company: lenderCompany,
-                borrower_company: borrowerCompany,
-                month: month,
-                year: year
-            })
+            body: JSON.stringify({})
         });
         
         const result = await response.json();
         
         if (response.ok) {
             let successMessage = `${result.message} ${result.matches_found} matches found.`;
-            if (result.lender_company && result.borrower_company) {
-                successMessage += ` (${result.lender_company} ↔ ${result.borrower_company})`;
-                if (result.month && result.year) {
-                    successMessage += ` (${result.month} ${result.year})`;
-                }
-            }
             resultDiv.innerHTML = `<div style="color: green;">${successMessage}</div>`;
             
             // Auto-load matches after reconciliation
@@ -789,5 +723,234 @@ async function clearRecentUploads() {
         }
     } catch (error) {
         // Ignore
+    }
+} 
+
+// Load detected company pairs
+async function loadDetectedPairs() {
+    try {
+        const response = await fetch('/api/detected-pairs');
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayDetectedPairs(result.pairs, 'Smart Scan');
+        } else {
+            console.error('Failed to load detected pairs:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading detected pairs:', error);
+    }
+}
+
+async function loadManualPairs() {
+    try {
+        const response = await fetch('/api/manual-pairs');
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayDetectedPairs(result.pairs, 'Manual Pairs');
+        } else {
+            console.error('Failed to load manual pairs:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading manual pairs:', error);
+    }
+}
+
+function displayDetectedPairs(pairs, type) {
+    const displayDiv = document.getElementById('detected-pairs-display');
+    
+    if (!pairs || pairs.length === 0) {
+        displayDiv.innerHTML = `
+            <div style="text-align: center; color: #666; padding: 20px;">
+                No ${type.toLowerCase()} pairs found.
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>${type} Results (${pairs.length} pairs)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Company Pair</th>
+                                <th>Period</th>
+                                <th>Transactions</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+    
+    pairs.forEach(pair => {
+        const description = pair.description || `${pair.lender_company} ↔ ${pair.borrower_company}`;
+        const period = `${pair.month} ${pair.year}`;
+        const transactionCount = pair.transaction_count || 'N/A';
+        const pairType = pair.type || 'detected';
+        
+        html += `
+            <tr>
+                <td><strong>${description}</strong></td>
+                <td>${period}</td>
+                <td><span class="badge bg-info">${transactionCount}</span></td>
+                <td><span class="badge bg-secondary">${pairType}</span></td>
+            </tr>
+        `;
+        
+        // If this pair has an opposite pair, show it too
+        if (pair.opposite_pair) {
+            const oppositeDescription = pair.opposite_pair.description;
+            html += `
+                <tr>
+                    <td style="padding-left: 20px;"><em>${oppositeDescription}</em></td>
+                    <td>${period}</td>
+                    <td><span class="badge bg-info">${transactionCount}</span></td>
+                    <td><span class="badge bg-secondary">${pairType}</span></td>
+                </tr>
+            `;
+        }
+    });
+    
+    html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    displayDiv.innerHTML = html;
+} 
+
+// Load and display pairs
+async function loadPairs() {
+    try {
+        const response = await fetch('/api/pairs');
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayPairs(result.pairs);
+        } else {
+            console.error('Failed to load pairs:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading pairs:', error);
+    }
+}
+
+function displayPairs(pairs) {
+    const resultDiv = document.getElementById('pairs-table-result');
+    
+    if (!pairs || pairs.length === 0) {
+        resultDiv.innerHTML = `
+            <div style="text-align: center; color: #666; padding: 20px;">
+                No upload pairs found. Upload some files to get started.
+            </div>
+        `;
+        return;
+    }
+    
+    let tableHTML = `
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Pair ID</th>
+                        <th>Upload Date</th>
+                        <th>Files</th>
+                        <th>Records</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    pairs.forEach(pair => {
+        const uploadDate = new Date(pair.upload_date).toLocaleString();
+        const files = pair.filenames.join(', ');
+        
+        tableHTML += `
+            <tr>
+                <td><code>${pair.pair_id}</code></td>
+                <td>${uploadDate}</td>
+                <td>${files}</td>
+                <td><span class="badge bg-info">${pair.record_count}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewPairData('${pair.pair_id}')">
+                        <i class="bi bi-eye"></i> View Data
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="reconcilePair('${pair.pair_id}')">
+                        <i class="bi bi-arrow-repeat"></i> Reconcile
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    resultDiv.innerHTML = tableHTML;
+}
+
+async function viewPairData(pairId) {
+    try {
+        const response = await fetch(`/api/pair/${pairId}/data`);
+        const result = await response.json();
+        
+        if (response.ok) {
+            // Switch to data table tab and display the pair data
+            showTab('data-table');
+            displayData(result.data, null);
+            
+            // Show which pair is being viewed
+            const resultDiv = document.getElementById('data-table-result');
+            resultDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Viewing Pair:</strong> ${pairId}
+                </div>
+                ${resultDiv.innerHTML}
+            `;
+        } else {
+            alert(`Failed to load pair data: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Error loading pair data: ${error.message}`);
+    }
+}
+
+async function reconcilePair(pairId) {
+    if (!confirm(`Are you sure you want to reconcile pair ${pairId}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/reconcile-pair/${pairId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(`Reconciliation complete! ${result.matches_found} matches found for pair ${pairId}`);
+            // Refresh the pairs list
+            loadPairs();
+        } else {
+            alert(`Reconciliation failed: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Error reconciling pair: ${error.message}`);
     }
 } 
