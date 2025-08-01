@@ -284,8 +284,12 @@ function displayCompanyPairs(pairs) {
         companyPairSelect.appendChild(option);
     });
     
+    // Remove existing event listener to prevent duplicates
+    const newCompanyPairSelect = companyPairSelect.cloneNode(true);
+    companyPairSelect.parentNode.replaceChild(newCompanyPairSelect, companyPairSelect);
+    
     // Add event listener to populate periods
-    companyPairSelect.addEventListener('change', function() {
+    newCompanyPairSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption.dataset.pair) {
             const pair = JSON.parse(selectedOption.dataset.pair);

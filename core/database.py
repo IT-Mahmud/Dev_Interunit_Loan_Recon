@@ -148,9 +148,15 @@ def find_matches(data):
     if not data:
         print("No data to match")
         return []
-    matches = []
+    
+    print(f"DEBUG: find_matches received {len(data)} records")
+    
     lenders = [r for r in data if r.get('Debit') and r['Debit'] > 0]
     borrowers = [r for r in data if r.get('Credit') and r['Credit'] > 0]
+    
+    print(f"DEBUG: Found {len(lenders)} lenders and {len(borrowers)} borrowers")
+    
+    matches = []
     for lender in lenders:
         lender_po = extract_po(lender.get('Particulars', ''))
         lender_lc = extract_lc(lender.get('Particulars', ''))
@@ -497,10 +503,14 @@ def get_unmatched_data_by_companies(lender_company, borrower_company, month=None
     
     with engine.connect() as conn:
         # Build query based on provided parameters
+        # Look for transactions where either company appears as lender or borrower
         query = """
             SELECT * FROM tally_data 
-            WHERE match_status = 'unmatched'
-            AND lender = :lender_company AND borrower = :borrower_company
+            WHERE (match_status = 'unmatched' OR match_status IS NULL)
+            AND (
+                (lender = :lender_company AND borrower = :borrower_company)
+                OR (lender = :borrower_company AND borrower = :lender_company)
+            )
         """
         params = {
             'lender_company': lender_company,
@@ -517,6 +527,9 @@ def get_unmatched_data_by_companies(lender_company, borrower_company, month=None
         
         query += " ORDER BY Date"
         
+        print(f"DEBUG: Query: {query}")
+        print(f"DEBUG: Params: {params}")
+        
         result = conn.execute(text(query), params)
         
         records = []
@@ -524,4 +537,5 @@ def get_unmatched_data_by_companies(lender_company, borrower_company, month=None
             record = dict(row._mapping)
             records.append(record)
         
+        print(f"DEBUG: Found {len(records)} records for {lender_company} ↔ {borrower_company}")
         return records 

@@ -1,5 +1,3 @@
-/__pycache__
 *.xlsx
-/parser/__pycache__
 *.pyc
-/core/__pycache__
+
