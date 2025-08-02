@@ -549,11 +549,11 @@ function displayMatches(matches) {
         );
         
         tableHTML += `
-            <tr class="match-row ${match.match_score > 0.7 ? 'high-confidence' : match.match_score > 0.5 ? 'medium-confidence' : 'low-confidence'}">
+            <tr class="match-row">
                 <!-- Lender Columns -->
                 <td data-column="lender_uid" class="uid-cell">${lenderUid || ''}</td>
                 <td data-column="lender_date">${formatDate(lenderRecord.Date)}</td>
-                <td data-column="lender_particulars" class="particulars-cell">${lenderRecord.Particulars || ''}</td>
+                <td data-column="lender_particulars" class="particulars-cell table-cell-large">${lenderRecord.Particulars || ''}</td>
                 <td data-column="lender_debit" class="amount-cell debit-amount">${formatAmount(lenderRecord.Debit || 0)}</td>
                 <td data-column="lender_credit" class="amount-cell credit-amount">${formatAmount(lenderRecord.Credit || 0)}</td>
                 <td data-column="lender_vch_type">${lenderRecord.Vch_Type || ''}</td>
@@ -561,7 +561,7 @@ function displayMatches(matches) {
                 <!-- Borrower Columns -->
                 <td data-column="borrower_uid" class="uid-cell">${borrowerUid || ''}</td>
                 <td data-column="borrower_date">${formatDate(borrowerRecord.Date)}</td>
-                <td data-column="borrower_particulars" class="particulars-cell">${borrowerRecord.Particulars || ''}</td>
+                <td data-column="borrower_particulars" class="particulars-cell table-cell-large">${borrowerRecord.Particulars || ''}</td>
                 <td data-column="borrower_debit" class="amount-cell debit-amount">${formatAmount(borrowerRecord.Debit || 0)}</td>
                 <td data-column="borrower_credit" class="amount-cell credit-amount">${formatAmount(borrowerRecord.Credit || 0)}</td>
                 <td data-column="borrower_vch_type">${borrowerRecord.Vch_Type || ''}</td>
@@ -569,11 +569,11 @@ function displayMatches(matches) {
                 <!-- Match Details Columns -->
                 <td data-column="confidence">
                     <div class="confidence-indicator">
-                        <span class="confidence-badge ${match.match_score > 0.7 ? 'high' : match.match_score > 0.5 ? 'medium' : 'low'}">
-                        ${(match.match_score * 100).toFixed(0)}%
+                        <span class="confidence-badge medium">
+                        N/A
                     </span>
                         <div class="confidence-bar">
-                            <div class="confidence-fill ${match.match_score > 0.7 ? 'high' : match.match_score > 0.5 ? 'medium' : 'low'}" style="width: ${match.match_score * 100}%"></div>
+                            <div class="confidence-fill medium" style="width: 0%"></div>
                         </div>
                     </div>
                 </td>
@@ -863,7 +863,6 @@ function displayPairs(pairs) {
                     <tr>
                         <th>Pair ID</th>
                         <th>Upload Date</th>
-                        <th>Files</th>
                         <th>Records</th>
                         <th>Actions</th>
                     </tr>
@@ -873,13 +872,11 @@ function displayPairs(pairs) {
     
     pairs.forEach(pair => {
         const uploadDate = new Date(pair.upload_date).toLocaleString();
-        const files = pair.filenames.join(', ');
         
         tableHTML += `
             <tr>
                 <td><code>${pair.pair_id}</code></td>
                 <td>${uploadDate}</td>
-                <td>${files}</td>
                 <td><span class="badge bg-info">${pair.record_count}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="viewPairData('${pair.pair_id}')">

@@ -11,6 +11,62 @@ h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea, label {
     font-family: 'Ubuntu', 'Segoe UI', sans-serif;
 }
 
+/* Table cell formatting */
+.table td, .matched-transactions-table td {
+    vertical-align: top !important;  /* Force top alignment */
+    white-space: pre-wrap;  /* Preserve whitespace and wrap text */
+    min-height: 50px;  /* Minimum height for cells */
+    padding: 4px 6px;  /* Tighter padding (top/bottom: 4px, left/right: 6px) */
+}
+
+/* Large cell for particulars */
+.table-cell-large {
+    width: 500px !important;  /* Fixed width */
+    max-width: 500px !important;  /* Ensure max width matches */
+    white-space: pre-wrap !important;  /* Preserve whitespace and wrap text */
+    vertical-align: top !important;  /* Force top alignment */
+}
+
+.table th, .matched-transactions-table th {
+    vertical-align: top !important;  /* Force top alignment for headers */
+    text-align: center;  /* Center header text */
+    background-color: #F8F9FA;  /* Match Excel header color */
+    font-weight: bold;
+    font-size: 11pt;
+}
+
+/* Particulars column specific style */
+.table td.particulars-cell,
+.matched-transactions-table td.particulars-cell {
+    width: 500px;  /* Match Excel column width */
+    max-width: 500px;
+}
+
+/* Match table specific styles */
+.matched-transactions-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.matched-transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.matched-transactions-table td,
+.matched-transactions-table th {
+    border: 1px solid #dee2e6;
+    padding: 4px 6px;  /* Tighter padding (top/bottom: 4px, left/right: 6px) */
+    text-align: left;
+}
+
+.matched-transactions-table thead th {
+    background-color: #F8F9FA;
+    font-weight: bold;
+    font-size: 11pt;
+}
+
 /* Sidebar vertical menu styles */
 .sidebar {
   width: 220px;

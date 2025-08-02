@@ -92,7 +92,7 @@ def upload_file():
         record_recent_upload(original_filename)
         
         # Parse file
-        df = parse_tally_file(filepath, sheet_name, original_filename)
+        df = parse_tally_file(filepath, sheet_name)
         
         # Save to database
         success, error_msg = database.save_data(df)
@@ -139,16 +139,13 @@ def upload_file_pair():
         total_rows = 0
         
         # Process first file
-        original_filename1 = file1.filename
+        original_filename1 = file1.filename  # Store original filename
         filename1 = secure_filename(file1.filename)
         filepath1 = os.path.join('uploads', filename1)
         file1.save(filepath1)
         
-        # Record recent upload
-        record_recent_upload(original_filename1)
-        
         # Parse first file
-        df1 = parse_tally_file(filepath1, sheet_name1, original_filename1)
+        df1 = parse_tally_file(filepath1, sheet_name1)
         # Add pair_id to first file
         df1['pair_id'] = pair_id
         total_rows += len(df1)
@@ -161,16 +158,13 @@ def upload_file_pair():
         os.remove(filepath1)
         
         # Process second file
-        original_filename2 = file2.filename
+        original_filename2 = file2.filename  # Store original filename
         filename2 = secure_filename(file2.filename)
         filepath2 = os.path.join('uploads', filename2)
         file2.save(filepath2)
         
-        # Record recent upload
-        record_recent_upload(original_filename2)
-        
         # Parse second file
-        df2 = parse_tally_file(filepath2, sheet_name2, original_filename2)
+        df2 = parse_tally_file(filepath2, sheet_name2)
         # Add pair_id to second file
         df2['pair_id'] = pair_id
         total_rows += len(df2)
@@ -181,6 +175,10 @@ def upload_file_pair():
             os.remove(filepath2)
             return jsonify({'error': error_msg2 or 'Failed to save second file'}), 400
         os.remove(filepath2)
+        
+        # Record recent uploads using actual filenames
+        record_recent_upload(original_filename1)
+        record_recent_upload(original_filename2)
         
         return jsonify({
             'message': 'File pair processed successfully',
@@ -457,7 +455,7 @@ def download_matches():
                 )
                 
                 # Create row with proper column structure matching HTML table
-                # The HTML table has 18 columns: 7 lender + 7 borrower + 4 match details
+                # The HTML table has 17 columns: 7 lender + 7 borrower + 3 match details
                 row_data = {}
                 
                 # Lender section (columns 1-7) - match HTML table exactly
@@ -478,9 +476,9 @@ def download_matches():
                 row_data['Borrower Vch Type'] = borrower_vch_type
                 row_data['Borrower Role'] = borrower_role
                 
-                # Match details section (columns 15-18) - match HTML table exactly
-                row_data['Confidence'] = f"{float(row.get('match_score', 0) * 100):.0f}%" if row.get('match_score') else 'N/A'
-                row_data['Match Type'] = row.get('keywords') or 'Auto'
+                # Match details section (4 columns)
+                row_data['Confidence'] = 'N/A'  # No longer using match_score
+                row_data['Keyword'] = row.get('keywords') or 'Auto'
                 row_data['Amount'] = matched_amount
                 row_data['Actions'] = 'Pending'
                 
@@ -492,78 +490,37 @@ def download_matches():
             
             # Export with openpyxl for formatting
             with pd.ExcelWriter(export_path, engine='openpyxl') as writer:
-                # Creatfe a new DataFrame with section headers
-                section_headers = []
-                
-                # Add section header row
-                section_row = []
-                section_row.extend(['LENDER (Debit > 0)'] * 7)  # 7 lender columns
-                section_row.extend(['BORROWER (Credit > 0)'] * 7)  # 7 borrower columns  
-                section_row.extend(['MATCH DETAILS'] * 4)  # 4 match detail columns
-                section_headers.append(section_row)
-                
-                # Add column headers
-                section_headers.append(export_df.columns.tolist())
-                
-                # Create header DataFrame
-                header_df = pd.DataFrame(section_headers)
-                
-                # Combine headers with data
-                final_df = pd.concat([header_df, export_df], ignore_index=True)
-                final_df.to_excel(writer, index=False, sheet_name='Matched Transactions')
+                # Write the DataFrame directly
+                export_df.to_excel(writer, index=False, sheet_name='Matched Transactions')
                 
                 # Get the worksheet for basic formatting
                 worksheet = writer.sheets['Matched Transactions']
                 
-                # Set basic column widths
+                # Set column widths and formatting
                 for col_idx in range(1, len(export_df.columns) + 1):
                     col_letter = get_column_letter(col_idx)
                     column_name = export_df.columns[col_idx - 1]
                     
                     if 'Particulars' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 50
-                    elif 'UID' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 20
-                    elif 'Date' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 12
-                    elif 'Debit' in column_name or 'Credit' in column_name or 'Amount' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 15
-                    elif 'Confidence' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 12
-                    elif 'Vch Type' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 15
-                    elif 'Role' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 12
-                    elif 'Match Type' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 15
-                    elif 'Actions' in column_name:
-                        worksheet.column_dimensions[col_letter].width = 12
+                        # Set Particulars column to 500 pixels (about 66.67 Excel units)
+                        worksheet.column_dimensions[col_letter].width = 66.67
                     else:
-                        worksheet.column_dimensions[col_letter].width = 15
+                        # Auto-fit other columns
+                        worksheet.column_dimensions[col_letter].auto_size = True
+                    
+                    # Apply text wrapping and top alignment for all columns
+                    for cell in worksheet[col_letter]:
+                        cell.alignment = Alignment(wrap_text=True, vertical='top')
                 
-                # Format section headers (row 1)
+                # Format header row
                 for col_idx in range(1, len(export_df.columns) + 1):
                     cell = worksheet.cell(row=1, column=col_idx)
-                    cell.font = Font(bold=True, color="FFFFFF", size=12)
-                    cell.alignment = Alignment(horizontal='center', vertical='center')
-                    
-                    # Apply background colors based on section
-                    if col_idx <= 7:  # Lender section
-                        cell.fill = PatternFill(start_color="1976D2", end_color="1976D2", fill_type="solid")
-                    elif col_idx <= 14:  # Borrower section
-                        cell.fill = PatternFill(start_color="7B1FA2", end_color="7B1FA2", fill_type="solid")
-                    else:  # Match details section
-                        cell.fill = PatternFill(start_color="388E3C", end_color="388E3C", fill_type="solid")
-                
-                # Format column headers (row 2)
-                for col_idx in range(1, len(export_df.columns) + 1):
-                    cell = worksheet.cell(row=2, column=col_idx)
                     cell.font = Font(bold=True, size=11)
-                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                    cell.alignment = Alignment(horizontal='center', vertical='top')
                     cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
                 
-                # Freeze panes after headers
-                worksheet.freeze_panes = "A3"
+                # Freeze panes after header
+                worksheet.freeze_panes = "A2"
             
             return send_from_directory('uploads', export_filename, as_attachment=True)
     except Exception as e:
@@ -668,7 +625,7 @@ def download_unmatched():
                 col_letter = get_column_letter(col_idx)
                 
                 if 'Particulars' in column:
-                    worksheet.column_dimensions[col_letter].width = 50
+                    worksheet.column_dimensions[col_letter].width = 66.67  # 500 pixels
                 elif 'UID' in column:
                     worksheet.column_dimensions[col_letter].width = 25
                 elif 'Date' in column:
@@ -679,12 +636,16 @@ def download_unmatched():
                     worksheet.column_dimensions[col_letter].width = 30
                 else:
                     worksheet.column_dimensions[col_letter].width = 15
+                    
+                # Apply text wrapping and top alignment for all columns
+                for cell in worksheet[col_letter]:
+                    cell.alignment = Alignment(wrap_text=True, vertical='top')
             
             # Format header row
             for col_idx in range(1, len(export_df.columns) + 1):
                 cell = worksheet.cell(row=1, column=col_idx)
                 cell.font = Font(bold=True, size=11)
-                cell.alignment = Alignment(horizontal='center', vertical='center')
+                cell.alignment = Alignment(horizontal='center', vertical='top')
                 cell.fill = PatternFill(start_color="F8F9FA", end_color="F8F9FA", fill_type="solid")
             
             # Freeze header row

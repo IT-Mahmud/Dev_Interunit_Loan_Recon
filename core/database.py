@@ -201,8 +201,6 @@ def update_matches(matches):
                 UPDATE tally_data 
                 SET matched_with = :matched_with, 
                     match_status = 'matched', 
-                    match_score = NULL, 
-                    date_matched = NOW(),
                     keywords = :keywords
                 WHERE uid = :borrower_uid
             """), {
@@ -215,8 +213,6 @@ def update_matches(matches):
                 UPDATE tally_data 
                 SET matched_with = :matched_with, 
                     match_status = 'matched', 
-                    match_score = NULL, 
-                    date_matched = NOW(),
                     keywords = :keywords
                 WHERE uid = :lender_uid
             """), {
@@ -279,8 +275,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     UPDATE tally_data 
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
-                        match_score = NULL,
-                        date_matched = NULL
+                        keywords = NULL
                     WHERE uid = :uid
                     """
                     conn.execute(text(sql_reset_main), {'uid': uid})
@@ -290,8 +285,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     UPDATE tally_data 
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
-                        match_score = NULL,
-                        date_matched = NULL
+                        keywords = NULL
                     WHERE uid = :matched_with_uid
                     """
                     conn.execute(text(sql_reset_matched), {'matched_with_uid': matched_with_uid})
@@ -302,8 +296,7 @@ def update_match_status(uid, status, confirmed_by=None):
                     UPDATE tally_data 
                     SET match_status = 'unmatched', 
                         matched_with = NULL,
-                        match_score = NULL,
-                        date_matched = NULL
+                        keywords = NULL
                     WHERE uid = :uid
                     """
                     conn.execute(text(sql_reset_main), {'uid': uid})
@@ -431,16 +424,14 @@ def reset_match_status():
                 UPDATE tally_data 
                 SET match_status = NULL, 
                     matched_with = NULL, 
-                    match_score = NULL, 
-                    keywords = NULL,
-                    confirmed_by = NULL
+                    keywords = NULL
             """)
             conn.execute(reset_query)
             conn.commit()
             return True
     except Exception as e:
         print(f"Error resetting match status: {e}")
-        return False 
+        return False
 
 def get_column_order():
     """Get the exact column order from the database"""
@@ -684,8 +675,7 @@ def get_all_pair_ids():
         sql = """
         SELECT DISTINCT pair_id, 
                COUNT(*) as record_count,
-               MIN(input_date) as upload_date,
-               GROUP_CONCAT(DISTINCT original_filename) as filenames
+               MIN(input_date) as upload_date
         FROM tally_data 
         WHERE pair_id IS NOT NULL
         GROUP BY pair_id
@@ -699,8 +689,7 @@ def get_all_pair_ids():
             pairs.append({
                 'pair_id': row['pair_id'],
                 'record_count': row['record_count'],
-                'upload_date': row['upload_date'],
-                'filenames': row['filenames'].split(',') if row['filenames'] else []
+                'upload_date': row['upload_date']
             })
         
         return pairs
