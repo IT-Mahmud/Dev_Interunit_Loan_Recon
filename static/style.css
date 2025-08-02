@@ -12,22 +12,31 @@ h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea, label {
 }
 
 /* Table cell formatting */
-.table td, .matched-transactions-table td {
+.table td, 
+.matched-transactions-table td, 
+.unmatched-transactions-table td {
     vertical-align: top !important;  /* Force top alignment */
-    white-space: pre-wrap;  /* Preserve whitespace and wrap text */
+    white-space: pre-wrap !important;  /* Preserve whitespace and wrap text */
     min-height: 50px;  /* Minimum height for cells */
-    padding: 4px 6px;  /* Tighter padding (top/bottom: 4px, left/right: 6px) */
+    padding: 8px 6px;  /* Padding (top/bottom: 8px, left/right: 6px) */
+    line-height: 1.4;  /* Better line height for readability */
 }
 
-/* Large cell for particulars */
+/* Particulars column specific styles */
+td[data-column="particulars"],
+td[data-column="lender_particulars"],
+td[data-column="borrower_particulars"],
+.particulars-cell,
 .table-cell-large {
     width: 500px !important;  /* Fixed width */
     max-width: 500px !important;  /* Ensure max width matches */
+    min-width: 500px !important;  /* Ensure minimum width */
     white-space: pre-wrap !important;  /* Preserve whitespace and wrap text */
     vertical-align: top !important;  /* Force top alignment */
+    word-break: break-word;  /* Allow words to break if needed */
 }
 
-.table th, .matched-transactions-table th {
+.table th, .matched-transactions-table th, .unmatched-transactions-table th {
     vertical-align: top !important;  /* Force top alignment for headers */
     text-align: center;  /* Center header text */
     background-color: #F8F9FA;  /* Match Excel header color */
@@ -37,34 +46,150 @@ h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea, label {
 
 /* Particulars column specific style */
 .table td.particulars-cell,
-.matched-transactions-table td.particulars-cell {
+.matched-transactions-table td.particulars-cell,
+.unmatched-transactions-table td.particulars-cell {
     width: 500px;  /* Match Excel column width */
     max-width: 500px;
 }
 
-/* Match table specific styles */
-.matched-transactions-wrapper {
+/* Table wrapper styles */
+.matched-transactions-wrapper,
+.unmatched-transactions-wrapper {
     width: 100%;
     overflow-x: auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1px solid #e1e6ef;
+    margin-bottom: 18px;
 }
 
-.matched-transactions-table {
+/* Table base styles */
+.matched-transactions-table,
+.unmatched-transactions-table {
     width: 100%;
+    min-width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
+    font-size: 11px;
+    font-family: 'Ubuntu', 'Segoe UI', sans-serif;
+    background: #fff;
+    border: 1px solid #dee2e6;
+}
+
+/* Cell borders and spacing */
+.matched-transactions-table th,
+.matched-transactions-table td,
+.unmatched-transactions-table th,
+.unmatched-transactions-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px 6px;
+}
+
+/* Header styles */
+.matched-transactions-table th,
+.unmatched-transactions-table th {
+    background-color: #F8F9FA;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Ensure even rows have alternating background */
+.matched-transactions-table tr:nth-child(even),
+.unmatched-transactions-table tr:nth-child(even) {
+    background: #f6f7fa;
+}
+
+/* Right align amount cells */
+.amount-cell {
+    text-align: right !important;
+}
+
+/* Hover effect on rows */
+.matched-transactions-table tr:hover,
+.unmatched-transactions-table tr:hover {
+    background-color: #f0f0f0;
 }
 
 .matched-transactions-table td,
-.matched-transactions-table th {
+.matched-transactions-table th,
+.unmatched-transactions-table td,
+.unmatched-transactions-table th {
     border: 1px solid #dee2e6;
     padding: 4px 6px;  /* Tighter padding (top/bottom: 4px, left/right: 6px) */
     text-align: left;
 }
 
-.matched-transactions-table thead th {
+.matched-transactions-table thead th,
+.unmatched-transactions-table thead th {
     background-color: #F8F9FA;
     font-weight: bold;
     font-size: 11pt;
+}
+
+/* Standard column classes */
+.uid-cell {
+    width: 25ch !important;
+    min-width: 25ch !important;
+    max-width: 25ch !important;
+}
+
+.date-cell {
+    width: 12ch !important;
+    min-width: 12ch !important;
+    max-width: 12ch !important;
+}
+
+.particulars-cell {
+    width: 500px !important;
+    min-width: 500px !important;
+    max-width: 500px !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+}
+
+.amount-cell {
+    width: 15ch !important;
+    min-width: 15ch !important;
+    max-width: 15ch !important;
+    text-align: right !important;
+}
+
+.company-cell {
+    width: 20ch !important;
+    min-width: 20ch !important;
+    max-width: 20ch !important;
+}
+
+.vch-type-cell {
+    width: 15ch !important;
+    min-width: 15ch !important;
+    max-width: 15ch !important;
+}
+
+.role-cell {
+    width: 10ch !important;
+    min-width: 10ch !important;
+    max-width: 10ch !important;
+}
+
+/* Header text alignment */
+.matched-transactions-table th,
+.unmatched-transactions-table th {
+    text-align: center !important;
+    background-color: #F8F9FA !important;
+    font-weight: bold !important;
+    vertical-align: middle !important;
+    padding: 8px 6px !important;
+}
+
+/* Cell text alignment and formatting */
+.matched-transactions-table td,
+.unmatched-transactions-table td {
+    padding: 8px 6px !important;
+    vertical-align: top !important;
+    line-height: 1.4 !important;
 }
 
 /* Sidebar vertical menu styles */

@@ -500,17 +500,28 @@ def download_matches():
                 for col_idx in range(1, len(export_df.columns) + 1):
                     col_letter = get_column_letter(col_idx)
                     column_name = export_df.columns[col_idx - 1]
+                    max_length = 0
                     
                     if 'Particulars' in column_name:
                         # Set Particulars column to 500 pixels (about 66.67 Excel units)
                         worksheet.column_dimensions[col_letter].width = 66.67
+                        # Apply text wrapping only for Particulars column
+                        for cell in worksheet[col_letter]:
+                            cell.alignment = Alignment(wrap_text=True, vertical='top')
                     else:
-                        # Auto-fit other columns
-                        worksheet.column_dimensions[col_letter].auto_size = True
-                    
-                    # Apply text wrapping and top alignment for all columns
-                    for cell in worksheet[col_letter]:
-                        cell.alignment = Alignment(wrap_text=True, vertical='top')
+                        # Calculate max length for auto-fit
+                        for cell in worksheet[col_letter]:
+                            try:
+                                if cell.value:
+                                    max_length = max(max_length, len(str(cell.value)))
+                            except:
+                                pass
+                        # Set width based on content (add some padding)
+                        adjusted_width = min(max_length + 2, 50)  # Cap at 50 to prevent too wide columns
+                        worksheet.column_dimensions[col_letter].width = adjusted_width
+                        # Top alignment without text wrapping for other columns
+                        for cell in worksheet[col_letter]:
+                            cell.alignment = Alignment(wrap_text=False, vertical='top')
                 
                 # Format header row
                 for col_idx in range(1, len(export_df.columns) + 1):
@@ -623,23 +634,28 @@ def download_unmatched():
             # Set column widths
             for col_idx, column in enumerate(export_df.columns, 1):
                 col_letter = get_column_letter(col_idx)
+                max_length = 0
                 
+                # Calculate max length for auto-fit
+                for cell in worksheet[col_letter]:
+                    try:
+                        if cell.value:
+                            max_length = max(max_length, len(str(cell.value)))
+                    except:
+                        pass
+                            
                 if 'Particulars' in column:
                     worksheet.column_dimensions[col_letter].width = 66.67  # 500 pixels
-                elif 'UID' in column:
-                    worksheet.column_dimensions[col_letter].width = 25
-                elif 'Date' in column:
-                    worksheet.column_dimensions[col_letter].width = 12
-                elif 'Debit' in column or 'Credit' in column:
-                    worksheet.column_dimensions[col_letter].width = 15
-                elif 'Source File' in column:
-                    worksheet.column_dimensions[col_letter].width = 30
+                    # Apply text wrapping only for Particulars
+                    for cell in worksheet[col_letter]:
+                        cell.alignment = Alignment(wrap_text=True, vertical='top')
                 else:
-                    worksheet.column_dimensions[col_letter].width = 15
-                    
-                # Apply text wrapping and top alignment for all columns
-                for cell in worksheet[col_letter]:
-                    cell.alignment = Alignment(wrap_text=True, vertical='top')
+                    # Auto-fit based on content with some padding
+                    adjusted_width = min(max_length + 2, 50)  # Cap at 50 to prevent too wide columns
+                    worksheet.column_dimensions[col_letter].width = adjusted_width
+                    # Top alignment without text wrapping for other columns
+                    for cell in worksheet[col_letter]:
+                        cell.alignment = Alignment(wrap_text=False, vertical='top')
             
             # Format header row
             for col_idx in range(1, len(export_df.columns) + 1):

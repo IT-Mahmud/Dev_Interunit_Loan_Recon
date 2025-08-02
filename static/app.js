@@ -331,6 +331,25 @@ async function loadMatches() {
     }
 }
 
+async function loadMatchesInViewer() {
+    const resultDiv = document.getElementById('matched-results-display');
+    resultDiv.innerHTML = '<div style="color: blue;">Loading matches...</div>';
+    
+    try {
+        const response = await fetch('/api/matches');
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayMatches(result.matches, 'matched-results-display');
+        } else {
+            resultDiv.innerHTML = `<div style="color: red;">Failed to load matches: ${result.error}</div>`;
+        }
+        
+    } catch (error) {
+        resultDiv.innerHTML = `<div style="color: red;">Failed to load matches: ${error.message}</div>`;
+    }
+}
+
 async function downloadMatches() {
     try {
         const response = await fetch('/api/download-matches');
@@ -365,8 +384,8 @@ async function downloadMatches() {
     }
 }
 
-function displayMatches(matches) {
-    const resultDiv = document.getElementById('reconciliation-result');
+function displayMatches(matches, targetDivId = 'reconciliation-result') {
+    const resultDiv = document.getElementById(targetDivId);
     
     if (!matches || matches.length === 0) {
         resultDiv.innerHTML = `
@@ -670,12 +689,37 @@ async function rejectMatch(uid) {
 function formatDate(dateString) {
     if (!dateString) return '';
     try {
-        const date = new Date(dateString);
+        // Try parsing as ISO date first
+        let date;
+        if (typeof dateString === 'string' && dateString.includes('-')) {
+            const [year, month, day] = dateString.split('-');
+            date = new Date(year, parseInt(month) - 1, day);
+        } else {
+            date = new Date(dateString);
+        }
+        
+        if (isNaN(date.getTime())) {
+            throw new Error('Invalid date');
+        }
+        
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch {
+        // If parsing fails, try to extract date components from string
+        const datePattern = /(\d{4})-(\d{2})-(\d{2})|(\d{2})[-/](\d{2})[-/](\d{4})|(\d{2})[-/](\d{2})[-/](\d{2})/;
+        const match = dateString.toString().match(datePattern);
+        if (match) {
+            if (match[1]) { // YYYY-MM-DD
+                return `${match[1]}-${match[2]}-${match[3]}`;
+            } else if (match[4]) { // DD-MM-YYYY or DD/MM/YYYY
+                return `${match[6]}-${match[5]}-${match[4]}`;
+            } else if (match[7]) { // DD-MM-YY or DD/MM/YY
+                const year = parseInt(match[9]) < 50 ? '20' + match[9] : '19' + match[9];
+                return `${year}-${match[8]}-${match[7]}`;
+            }
+        }
         return dateString;
     }
 }
@@ -951,3 +995,148 @@ async function reconcilePair(pairId) {
         alert(`Error reconciling pair: ${error.message}`);
     }
 } 
+
+// Load unmatched results
+async function loadUnmatchedResults() {
+    try {
+        const lenderCompany = document.getElementById('unmatched-company-pair-select').value;
+        const period = document.getElementById('unmatched-period-select').value;
+        
+        let url = '/api/unmatched';
+        if (lenderCompany && period) {
+            const [month, year] = period.split(' ');
+            url += `?lender_company=${encodeURIComponent(lenderCompany)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`;
+        }
+        
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (response.ok) {
+            displayUnmatchedResults(result.unmatched);
+        } else {
+            console.error('Failed to load unmatched results:', result.error);
+        }
+    } catch (error) {
+        console.error('Error loading unmatched results:', error);
+    }
+}
+
+// Download unmatched results
+async function downloadUnmatchedResults() {
+    try {
+        const lenderCompany = document.getElementById('unmatched-company-pair-select').value;
+        const period = document.getElementById('unmatched-period-select').value;
+        
+        let url = '/api/download-unmatched';
+        if (lenderCompany && period) {
+            const [month, year] = period.split(' ');
+            url += `?lender_company=${encodeURIComponent(lenderCompany)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`;
+        }
+        
+        window.location.href = url;
+    } catch (error) {
+        console.error('Error downloading unmatched results:', error);
+    }
+}
+
+// Display unmatched results
+function displayUnmatchedResults(unmatched) {
+    const displayDiv = document.getElementById('unmatched-results-display');
+    
+    if (!unmatched || unmatched.length === 0) {
+        displayDiv.innerHTML = `
+            <div style="text-align: center; color: #666; padding: 20px;">
+                No unmatched transactions found.
+            </div>
+        `;
+        return;
+    }
+    
+    let tableHTML = `
+        <div class="unmatched-transactions-wrapper">
+            <div class="unmatched-header">
+                <h4><i class="bi bi-link-45deg"></i> Unmatched Transactions (${unmatched.length} records)</h4>
+            </div>
+            <div class="table-responsive">
+                <table class="unmatched-transactions-table">
+                    <thead>
+                        <tr>
+                            <th data-column="uid" class="uid-cell text-center">UID</th>
+                            <th data-column="date" class="date-cell text-center">Date</th>
+                            <th data-column="company" class="company-cell text-center">Company</th>
+                            <th data-column="particulars" class="particulars-cell text-center">Particulars</th>
+                            <th data-column="debit" class="amount-cell text-center">Debit Amount</th>
+                            <th data-column="credit" class="amount-cell text-center">Credit Amount</th>
+                            <th data-column="vch_type" class="vch-type-cell text-center">Voucher Type</th>
+                            <th data-column="role" class="role-cell text-center">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    unmatched.forEach(record => {
+        tableHTML += `
+            <tr>
+                <td data-column="uid" class="uid-cell">${record.uid || ''}</td>
+                <td data-column="date" class="date-cell">${formatDate(record.Date) || ''}</td>
+                <td data-column="company" class="company-cell">${record.lender || ''}</td>
+                <td data-column="particulars" class="particulars-cell">${record.Particulars || ''}</td>
+                <td data-column="debit" class="amount-cell text-end">${formatAmount(record.Debit || '')}</td>
+                <td data-column="credit" class="amount-cell text-end">${formatAmount(record.Credit || '')}</td>
+                <td data-column="vch_type" class="vch-type-cell">${record.Vch_Type || ''}</td>
+                <td data-column="role" class="role-cell">${record.role || ''}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    displayDiv.innerHTML = tableHTML;
+}
+
+// Load company pairs for unmatched filter
+async function loadUnmatchedCompanyPairs() {
+    try {
+        const response = await fetch('/api/detected-pairs');
+        const result = await response.json();
+        
+        if (response.ok && result.pairs) {
+            const select = document.getElementById('unmatched-company-pair-select');
+            const periodSelect = document.getElementById('unmatched-period-select');
+            
+            // Clear existing options
+            select.innerHTML = '<option value="">-- All Company Pairs --</option>';
+            periodSelect.innerHTML = '<option value="">-- All Periods --</option>';
+            
+            // Add company pairs
+            result.pairs.forEach(pair => {
+                const option = document.createElement('option');
+                option.value = pair.lender_company;
+                option.textContent = `${pair.lender_company} ↔ ${pair.borrower_company}`;
+                select.appendChild(option);
+                
+                // Add period if not already added
+                const periodOption = document.createElement('option');
+                const periodText = `${pair.month} ${pair.year}`;
+                if (!Array.from(periodSelect.options).some(opt => opt.text === periodText)) {
+                    periodOption.value = periodText;
+                    periodOption.textContent = periodText;
+                    periodSelect.appendChild(periodOption);
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading company pairs:', error);
+    }
+}
+
+function clearUnmatchedCompanySelection() {
+    document.getElementById('unmatched-company-pair-select').value = '';
+    document.getElementById('unmatched-period-select').value = '';
+    loadUnmatchedResults();
+}
